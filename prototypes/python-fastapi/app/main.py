@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import create_tables, get_db
+from app.database import SessionLocal, create_tables, get_db
 from app.db_repository import InsightDBRepository
-from app.models import Insight
+from app.dependencies import get_current_user
+from app.models import Insight, User
+from app.routers import auth, users
+from app.seed import seed_users
 from app.schemas import (
     InsightCreate,
     InsightListResponse,
@@ -17,12 +20,16 @@ from app.schemas import (
 
 # Error message constants
 INSIGHT_NOT_FOUND = "Insight not found"
+NOT_AUTHORIZED = "Not authorized to modify this insight"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
     create_tables()
+    # Seed default users for development
+    with SessionLocal() as session:
+        seed_users(session)
     yield
 
 
@@ -32,6 +39,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(users.router)
 
 
 def get_repository(db: Session = Depends(get_db)) -> InsightDBRepository:
@@ -43,6 +54,7 @@ def get_repository(db: Session = Depends(get_db)) -> InsightDBRepository:
 async def list_insights(
     limit: int = 20,
     offset: int = 0,
+    current_user: User = Depends(get_current_user),
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """List all insights."""
@@ -62,15 +74,15 @@ async def list_insights(
 )
 async def create_insight(
     insight_data: InsightCreate,
+    current_user: User = Depends(get_current_user),
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """Create a new insight."""
-    # For now, use a placeholder author_id (auth will come later)
     insight = Insight(
         title=insight_data.title,
         description=insight_data.description,
         source=insight_data.source,
-        author_id=uuid.uuid4(),  # Placeholder
+        author_id=current_user.id,
     )
     created = repository.create(insight)
     return InsightResponse(**created.model_dump())
@@ -79,6 +91,7 @@ async def create_insight(
 @app.get("/api/v1/insights/{insight_id}", response_model=InsightResponse)
 async def get_insight(
     insight_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """Get an insight by ID."""
@@ -95,16 +108,26 @@ async def get_insight(
 async def update_insight(
     insight_id: uuid.UUID,
     insight_data: InsightUpdate,
+    current_user: User = Depends(get_current_user),
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """Update an insight."""
-    update_data = insight_data.model_dump(exclude_unset=True)
-    updated = repository.update(insight_id, **update_data)
-    if not updated:
+    insight = repository.get_by_id(insight_id)
+    if not insight:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=INSIGHT_NOT_FOUND,
         )
+
+    # Check if user is the author
+    if insight.author_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=NOT_AUTHORIZED,
+        )
+
+    update_data = insight_data.model_dump(exclude_unset=True)
+    updated = repository.update(insight_id, **update_data)
     return InsightResponse(**updated.model_dump())
 
 
@@ -114,13 +137,23 @@ async def update_insight(
 )
 async def delete_insight(
     insight_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """Delete an insight."""
-    deleted = repository.delete(insight_id)
-    if not deleted:
+    insight = repository.get_by_id(insight_id)
+    if not insight:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=INSIGHT_NOT_FOUND,
         )
+
+    # Check if user is the author
+    if insight.author_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=NOT_AUTHORIZED,
+        )
+
+    repository.delete(insight_id)
     return None
