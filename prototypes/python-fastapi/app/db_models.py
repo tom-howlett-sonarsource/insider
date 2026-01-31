@@ -6,7 +6,7 @@ from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-from app.models import Insight, Source
+from app.models import Insight, Role, Source, User
 
 
 class InsightDB(Base):
@@ -62,4 +62,43 @@ class InsightDB(Base):
             title=insight.title,
             description=insight.description,
             source=insight.source.value if insight.source else None,
+        )
+
+
+class UserDB(Base):
+    """SQLAlchemy model for users table."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    def __init__(
+        self,
+        id: uuid.UUID,
+        email: str,
+        name: str,
+        hashed_password: str,
+        role: str,
+    ):
+        self.id = str(id)
+        self.email = email
+        self.name = name
+        self.hashed_password = hashed_password
+        self.role = role
+
+    def to_domain(self) -> User:
+        """Convert to domain model."""
+        return User(
+            id=uuid.UUID(self.id),
+            email=self.email,
+            name=self.name,
+            role=Role(self.role),
+            created_at=self.created_at,
         )

@@ -14,9 +14,9 @@ class TestListInsights:
     """Tests for GET /api/v1/insights."""
 
     @pytest.mark.anyio
-    async def test_list_insights_empty(self, client):
+    async def test_list_insights_empty(self, client, auth_headers):
         """Returns empty list when no insights exist."""
-        response = await client.get(INSIGHTS_ENDPOINT)
+        response = await client.get(INSIGHTS_ENDPOINT, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -24,7 +24,7 @@ class TestListInsights:
         assert data["total"] == 0
 
     @pytest.mark.anyio
-    async def test_list_insights_returns_insights(self, client):
+    async def test_list_insights_returns_insights(self, client, auth_headers):
         """Returns list of insights."""
         # First create an insight
         await client.post(
@@ -33,21 +33,29 @@ class TestListInsights:
                 "title": TEST_INSIGHT_TITLE,
                 "description": TEST_DESCRIPTION,
             },
+            headers=auth_headers,
         )
 
-        response = await client.get(INSIGHTS_ENDPOINT)
+        response = await client.get(INSIGHTS_ENDPOINT, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 1
         assert data["items"][0]["title"] == TEST_INSIGHT_TITLE
 
+    @pytest.mark.anyio
+    async def test_list_insights_without_auth_returns_401(self, client):
+        """Returns 401 when no token provided."""
+        response = await client.get(INSIGHTS_ENDPOINT)
+
+        assert response.status_code == 401
+
 
 class TestCreateInsight:
     """Tests for POST /api/v1/insights."""
 
     @pytest.mark.anyio
-    async def test_create_insight_minimal(self, client):
+    async def test_create_insight_minimal(self, client, auth_headers):
         """Can create insight with just title and description."""
         response = await client.post(
             INSIGHTS_ENDPOINT,
@@ -55,6 +63,7 @@ class TestCreateInsight:
                 "title": "Users want dark mode",
                 "description": "Feedback from conference.",
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 201
@@ -65,7 +74,7 @@ class TestCreateInsight:
         assert "created_at" in data
 
     @pytest.mark.anyio
-    async def test_create_insight_with_source(self, client):
+    async def test_create_insight_with_source(self, client, auth_headers):
         """Can create insight with source."""
         response = await client.post(
             INSIGHTS_ENDPOINT,
@@ -74,6 +83,7 @@ class TestCreateInsight:
                 "description": "Multiple users mentioned this.",
                 "source": "community_forum",
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 201
@@ -81,49 +91,65 @@ class TestCreateInsight:
         assert data["source"] == "community_forum"
 
     @pytest.mark.anyio
-    async def test_create_insight_missing_title(self, client):
-        """Returns 400 when title is missing."""
+    async def test_create_insight_missing_title(self, client, auth_headers):
+        """Returns 422 when title is missing."""
         response = await client.post(
             INSIGHTS_ENDPOINT,
             json={
                 "description": SOME_DESCRIPTION,
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 422
 
     @pytest.mark.anyio
-    async def test_create_insight_empty_title(self, client):
-        """Returns 400 when title is empty."""
+    async def test_create_insight_empty_title(self, client, auth_headers):
+        """Returns 422 when title is empty."""
         response = await client.post(
             INSIGHTS_ENDPOINT,
             json={
                 "title": "",
                 "description": SOME_DESCRIPTION,
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 422
 
     @pytest.mark.anyio
-    async def test_create_insight_title_too_long(self, client):
-        """Returns 400 when title exceeds 200 characters."""
+    async def test_create_insight_title_too_long(self, client, auth_headers):
+        """Returns 422 when title exceeds 200 characters."""
         response = await client.post(
             INSIGHTS_ENDPOINT,
             json={
                 "title": "x" * 201,
                 "description": SOME_DESCRIPTION,
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 422
+
+    @pytest.mark.anyio
+    async def test_create_insight_without_auth_returns_401(self, client):
+        """Returns 401 when no token provided."""
+        response = await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
+            },
+        )
+
+        assert response.status_code == 401
 
 
 class TestGetInsight:
     """Tests for GET /api/v1/insights/{id}."""
 
     @pytest.mark.anyio
-    async def test_get_insight(self, client):
+    async def test_get_insight(self, client, auth_headers):
         """Can retrieve an insight by ID."""
         # First create an insight
         create_response = await client.post(
@@ -132,10 +158,13 @@ class TestGetInsight:
                 "title": TEST_INSIGHT_TITLE,
                 "description": TEST_DESCRIPTION,
             },
+            headers=auth_headers,
         )
         insight_id = create_response.json()["id"]
 
-        response = await client.get(f"{INSIGHTS_ENDPOINT}/{insight_id}")
+        response = await client.get(
+            f"{INSIGHTS_ENDPOINT}/{insight_id}", headers=auth_headers
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -143,11 +172,13 @@ class TestGetInsight:
         assert data["title"] == TEST_INSIGHT_TITLE
 
     @pytest.mark.anyio
-    async def test_get_insight_not_found(self, client):
+    async def test_get_insight_not_found(self, client, auth_headers):
         """Returns 404 when insight doesn't exist."""
         fake_id = str(uuid.uuid4())
 
-        response = await client.get(f"{INSIGHTS_ENDPOINT}/{fake_id}")
+        response = await client.get(
+            f"{INSIGHTS_ENDPOINT}/{fake_id}", headers=auth_headers
+        )
 
         assert response.status_code == 404
 
@@ -156,7 +187,7 @@ class TestUpdateInsight:
     """Tests for PUT /api/v1/insights/{id}."""
 
     @pytest.mark.anyio
-    async def test_update_insight(self, client):
+    async def test_update_insight(self, client, auth_headers):
         """Can update an insight."""
         # First create an insight
         create_response = await client.post(
@@ -165,6 +196,7 @@ class TestUpdateInsight:
                 "title": "Original title",
                 "description": "Original description",
             },
+            headers=auth_headers,
         )
         insight_id = create_response.json()["id"]
 
@@ -173,6 +205,7 @@ class TestUpdateInsight:
             json={
                 "title": "Updated title",
             },
+            headers=auth_headers,
         )
 
         assert response.status_code == 200
@@ -181,13 +214,14 @@ class TestUpdateInsight:
         assert data["description"] == "Original description"
 
     @pytest.mark.anyio
-    async def test_update_insight_not_found(self, client):
+    async def test_update_insight_not_found(self, client, auth_headers):
         """Returns 404 when insight doesn't exist."""
         fake_id = str(uuid.uuid4())
 
         response = await client.put(
             f"{INSIGHTS_ENDPOINT}/{fake_id}",
             json={"title": "Updated"},
+            headers=auth_headers,
         )
 
         assert response.status_code == 404
@@ -197,7 +231,7 @@ class TestDeleteInsight:
     """Tests for DELETE /api/v1/insights/{id}."""
 
     @pytest.mark.anyio
-    async def test_delete_insight(self, client):
+    async def test_delete_insight(self, client, auth_headers):
         """Can delete an insight."""
         # First create an insight
         create_response = await client.post(
@@ -206,22 +240,29 @@ class TestDeleteInsight:
                 "title": "To be deleted",
                 "description": "This will be deleted",
             },
+            headers=auth_headers,
         )
         insight_id = create_response.json()["id"]
 
-        response = await client.delete(f"{INSIGHTS_ENDPOINT}/{insight_id}")
+        response = await client.delete(
+            f"{INSIGHTS_ENDPOINT}/{insight_id}", headers=auth_headers
+        )
 
         assert response.status_code == 204
 
         # Verify it's gone
-        get_response = await client.get(f"{INSIGHTS_ENDPOINT}/{insight_id}")
+        get_response = await client.get(
+            f"{INSIGHTS_ENDPOINT}/{insight_id}", headers=auth_headers
+        )
         assert get_response.status_code == 404
 
     @pytest.mark.anyio
-    async def test_delete_insight_not_found(self, client):
+    async def test_delete_insight_not_found(self, client, auth_headers):
         """Returns 404 when insight doesn't exist."""
         fake_id = str(uuid.uuid4())
 
-        response = await client.delete(f"{INSIGHTS_ENDPOINT}/{fake_id}")
+        response = await client.delete(
+            f"{INSIGHTS_ENDPOINT}/{fake_id}", headers=auth_headers
+        )
 
         assert response.status_code == 404
