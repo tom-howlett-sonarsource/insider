@@ -63,3 +63,27 @@ The tool returns issues with:
 - `primaryMessage`: Description of the issue
 - `severity`: CRITICAL, HIGH, MEDIUM, LOW, INFO
 - `textRange`: Location of the issue in the code
+
+### SonarQube Issues Log
+
+All SonarQube issues found during development are tracked in `docs/sonarqube-issues-log.md`.
+
+**When you find and fix a SonarQube issue (either locally or from a blocked PR), you must:**
+1. Add an entry to the summary table with date, file, rule, severity, and attempts to fix
+2. Add a detailed log entry with:
+   - Date and file path
+   - MCP method used (e.g., `mcp__sonarqube__analyze_code_snippet`)
+   - Rule ID and description
+   - Severity and impact
+   - The exact message from SonarQube
+   - Number of attempts to fix
+   - How the issue was resolved
+   - If from a blocked PR: note the PR number and that it was caught by CI
+3. Update the totals at the top of the file
+
+**Sources of SonarQube issues to track:**
+- Local analysis using `mcp__sonarqube__analyze_code_snippet` before commits
+- PR quality gate failures from SonarCloud CI
+- Issues found via `mcp__sonarqube__search_sonar_issues_in_projects`
+
+This log helps track code quality improvements and common issue patterns over time.
