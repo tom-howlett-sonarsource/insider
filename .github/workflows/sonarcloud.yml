@@ -1,0 +1,46 @@
+name: SonarCloud Analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones disabled for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          if [ -f prototypes/python-fastapi/requirements.txt ]; then
+            pip install -r prototypes/python-fastapi/requirements.txt
+          fi
+          pip install pytest pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          if [ -d prototypes/python-fastapi ]; then
+            cd prototypes/python-fastapi
+            pytest --cov=. --cov-report=xml:../../coverage.xml || true
+          fi
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=tom-howlett-sonarsource
+            -Dsonar.projectKey=tom-howlett-sonarsource_insider
+            -Dsonar.python.coverage.reportPaths=coverage.xml
