@@ -39,3 +39,27 @@ Use the SonarQube MCP server to analyze code quality:
 - Check for bugs, code smells, and security vulnerabilities
 - Review issues before creating PRs
 - Ensure quality gate passes before merge
+
+### Before Every Commit
+
+**IMPORTANT:** Always analyze code with SonarQube MCP before committing:
+
+1. Use `mcp__sonarqube__analyze_code_snippet` to check each modified Python file
+2. Fix any issues found (especially CRITICAL and HIGH severity)
+3. Re-analyze to confirm fixes
+4. Only then proceed with commit
+
+Example usage:
+```
+mcp__sonarqube__analyze_code_snippet(
+    projectKey="tom-howlett-sonarsource_insider",
+    codeSnippet="<file contents>",
+    language="python"
+)
+```
+
+The tool returns issues with:
+- `ruleKey`: The SonarQube rule that was violated
+- `primaryMessage`: Description of the issue
+- `severity`: CRITICAL, HIGH, MEDIUM, LOW, INFO
+- `textRange`: Location of the issue in the code

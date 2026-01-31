@@ -23,17 +23,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ -f prototypes/python-fastapi/requirements.txt ]; then
-            pip install -r prototypes/python-fastapi/requirements.txt
-          fi
-          pip install pytest pytest-cov
+          cd prototypes/python-fastapi
+          pip install -e ".[dev]"
 
       - name: Run tests with coverage
         run: |
-          if [ -d prototypes/python-fastapi ]; then
-            cd prototypes/python-fastapi
-            pytest --cov=. --cov-report=xml:../../coverage.xml || true
-          fi
+          cd prototypes/python-fastapi
+          pytest --cov=app --cov-report=xml:../../coverage.xml
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
