@@ -36,11 +36,11 @@ jobs:
           fi
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.organization=tom-howlett-sonarsource_insider
-            -Dsonar.projectKey=tom-howlett-sonarsource_insider_insider
+            -Dsonar.organization=tom-howlett-sonarsource
+            -Dsonar.projectKey=tom-howlett-sonarsource_insider
             -Dsonar.python.coverage.reportPaths=coverage.xml
