@@ -2,10 +2,12 @@
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.database import create_tables, get_db
+from app.db_repository import InsightDBRepository
 from app.models import Insight
-from app.repository import insight_repository
 from app.schemas import (
     InsightCreate,
     InsightListResponse,
@@ -20,11 +22,8 @@ INSIGHT_NOT_FOUND = "Insight not found"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
-    # Clear repository on startup (for testing isolation)
-    insight_repository.clear()
+    create_tables()
     yield
-    # Cleanup on shutdown
-    insight_repository.clear()
 
 
 app = FastAPI(
@@ -35,10 +34,19 @@ app = FastAPI(
 )
 
 
+def get_repository(db: Session = Depends(get_db)) -> InsightDBRepository:
+    """Dependency that provides an insight repository."""
+    return InsightDBRepository(db)
+
+
 @app.get("/api/v1/insights", response_model=InsightListResponse)
-async def list_insights(limit: int = 20, offset: int = 0):
+async def list_insights(
+    limit: int = 20,
+    offset: int = 0,
+    repository: InsightDBRepository = Depends(get_repository),
+):
     """List all insights."""
-    insights, total = insight_repository.get_all(limit=limit, offset=offset)
+    insights, total = repository.get_all(limit=limit, offset=offset)
     return InsightListResponse(
         items=[InsightResponse(**i.model_dump()) for i in insights],
         total=total,
@@ -52,7 +60,10 @@ async def list_insights(limit: int = 20, offset: int = 0):
     response_model=InsightResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_insight(insight_data: InsightCreate):
+async def create_insight(
+    insight_data: InsightCreate,
+    repository: InsightDBRepository = Depends(get_repository),
+):
     """Create a new insight."""
     # For now, use a placeholder author_id (auth will come later)
     insight = Insight(
@@ -61,14 +72,17 @@ async def create_insight(insight_data: InsightCreate):
         source=insight_data.source,
         author_id=uuid.uuid4(),  # Placeholder
     )
-    created = insight_repository.create(insight)
+    created = repository.create(insight)
     return InsightResponse(**created.model_dump())
 
 
 @app.get("/api/v1/insights/{insight_id}", response_model=InsightResponse)
-async def get_insight(insight_id: uuid.UUID):
+async def get_insight(
+    insight_id: uuid.UUID,
+    repository: InsightDBRepository = Depends(get_repository),
+):
     """Get an insight by ID."""
-    insight = insight_repository.get_by_id(insight_id)
+    insight = repository.get_by_id(insight_id)
     if not insight:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -78,10 +92,14 @@ async def get_insight(insight_id: uuid.UUID):
 
 
 @app.put("/api/v1/insights/{insight_id}", response_model=InsightResponse)
-async def update_insight(insight_id: uuid.UUID, insight_data: InsightUpdate):
+async def update_insight(
+    insight_id: uuid.UUID,
+    insight_data: InsightUpdate,
+    repository: InsightDBRepository = Depends(get_repository),
+):
     """Update an insight."""
     update_data = insight_data.model_dump(exclude_unset=True)
-    updated = insight_repository.update(insight_id, **update_data)
+    updated = repository.update(insight_id, **update_data)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -94,9 +112,12 @@ async def update_insight(insight_id: uuid.UUID, insight_data: InsightUpdate):
     "/api/v1/insights/{insight_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_insight(insight_id: uuid.UUID):
+async def delete_insight(
+    insight_id: uuid.UUID,
+    repository: InsightDBRepository = Depends(get_repository),
+):
     """Delete an insight."""
-    deleted = insight_repository.delete(insight_id)
+    deleted = repository.delete(insight_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

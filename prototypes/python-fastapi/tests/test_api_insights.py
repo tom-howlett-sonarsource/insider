@@ -2,23 +2,12 @@
 import uuid
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-
-@pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture
-async def client():
-    """Create a test client for the API."""
-    from app.main import app
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        yield ac
+# Test constants
+INSIGHTS_ENDPOINT = "/api/v1/insights"
+TEST_INSIGHT_TITLE = "Test insight"
+TEST_DESCRIPTION = "Test description"
+SOME_DESCRIPTION = "Some description"
 
 
 class TestListInsights:
@@ -27,7 +16,7 @@ class TestListInsights:
     @pytest.mark.anyio
     async def test_list_insights_empty(self, client):
         """Returns empty list when no insights exist."""
-        response = await client.get("/api/v1/insights")
+        response = await client.get(INSIGHTS_ENDPOINT)
 
         assert response.status_code == 200
         data = response.json()
@@ -39,19 +28,19 @@ class TestListInsights:
         """Returns list of insights."""
         # First create an insight
         await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
-                "title": "Test insight",
-                "description": "Test description",
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
             },
         )
 
-        response = await client.get("/api/v1/insights")
+        response = await client.get(INSIGHTS_ENDPOINT)
 
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 1
-        assert data["items"][0]["title"] == "Test insight"
+        assert data["items"][0]["title"] == TEST_INSIGHT_TITLE
 
 
 class TestCreateInsight:
@@ -61,7 +50,7 @@ class TestCreateInsight:
     async def test_create_insight_minimal(self, client):
         """Can create insight with just title and description."""
         response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "Users want dark mode",
                 "description": "Feedback from conference.",
@@ -79,7 +68,7 @@ class TestCreateInsight:
     async def test_create_insight_with_source(self, client):
         """Can create insight with source."""
         response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "API docs are confusing",
                 "description": "Multiple users mentioned this.",
@@ -95,9 +84,9 @@ class TestCreateInsight:
     async def test_create_insight_missing_title(self, client):
         """Returns 400 when title is missing."""
         response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
-                "description": "Some description",
+                "description": SOME_DESCRIPTION,
             },
         )
 
@@ -107,10 +96,10 @@ class TestCreateInsight:
     async def test_create_insight_empty_title(self, client):
         """Returns 400 when title is empty."""
         response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "",
-                "description": "Some description",
+                "description": SOME_DESCRIPTION,
             },
         )
 
@@ -120,10 +109,10 @@ class TestCreateInsight:
     async def test_create_insight_title_too_long(self, client):
         """Returns 400 when title exceeds 200 characters."""
         response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "x" * 201,
-                "description": "Some description",
+                "description": SOME_DESCRIPTION,
             },
         )
 
@@ -138,27 +127,27 @@ class TestGetInsight:
         """Can retrieve an insight by ID."""
         # First create an insight
         create_response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
-                "title": "Test insight",
-                "description": "Test description",
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
             },
         )
         insight_id = create_response.json()["id"]
 
-        response = await client.get(f"/api/v1/insights/{insight_id}")
+        response = await client.get(f"{INSIGHTS_ENDPOINT}/{insight_id}")
 
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == insight_id
-        assert data["title"] == "Test insight"
+        assert data["title"] == TEST_INSIGHT_TITLE
 
     @pytest.mark.anyio
     async def test_get_insight_not_found(self, client):
         """Returns 404 when insight doesn't exist."""
         fake_id = str(uuid.uuid4())
 
-        response = await client.get(f"/api/v1/insights/{fake_id}")
+        response = await client.get(f"{INSIGHTS_ENDPOINT}/{fake_id}")
 
         assert response.status_code == 404
 
@@ -171,7 +160,7 @@ class TestUpdateInsight:
         """Can update an insight."""
         # First create an insight
         create_response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "Original title",
                 "description": "Original description",
@@ -180,7 +169,7 @@ class TestUpdateInsight:
         insight_id = create_response.json()["id"]
 
         response = await client.put(
-            f"/api/v1/insights/{insight_id}",
+            f"{INSIGHTS_ENDPOINT}/{insight_id}",
             json={
                 "title": "Updated title",
             },
@@ -197,7 +186,7 @@ class TestUpdateInsight:
         fake_id = str(uuid.uuid4())
 
         response = await client.put(
-            f"/api/v1/insights/{fake_id}",
+            f"{INSIGHTS_ENDPOINT}/{fake_id}",
             json={"title": "Updated"},
         )
 
@@ -212,7 +201,7 @@ class TestDeleteInsight:
         """Can delete an insight."""
         # First create an insight
         create_response = await client.post(
-            "/api/v1/insights",
+            INSIGHTS_ENDPOINT,
             json={
                 "title": "To be deleted",
                 "description": "This will be deleted",
@@ -220,12 +209,12 @@ class TestDeleteInsight:
         )
         insight_id = create_response.json()["id"]
 
-        response = await client.delete(f"/api/v1/insights/{insight_id}")
+        response = await client.delete(f"{INSIGHTS_ENDPOINT}/{insight_id}")
 
         assert response.status_code == 204
 
         # Verify it's gone
-        get_response = await client.get(f"/api/v1/insights/{insight_id}")
+        get_response = await client.get(f"{INSIGHTS_ENDPOINT}/{insight_id}")
         assert get_response.status_code == 404
 
     @pytest.mark.anyio
@@ -233,6 +222,6 @@ class TestDeleteInsight:
         """Returns 404 when insight doesn't exist."""
         fake_id = str(uuid.uuid4())
 
-        response = await client.delete(f"/api/v1/insights/{fake_id}")
+        response = await client.delete(f"{INSIGHTS_ENDPOINT}/{fake_id}")
 
         assert response.status_code == 404

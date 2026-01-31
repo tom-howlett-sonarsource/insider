@@ -47,6 +47,9 @@ htmlcov/
 .tox/
 .nox/
 
+# Database
+*.db
+
 # Build outputs
 *.log
 *.tmp
