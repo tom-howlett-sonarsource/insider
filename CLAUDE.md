@@ -16,6 +16,29 @@ Never write implementation code without a corresponding test.
 - PRs must pass quality gates before merge
 - Address security hotspots immediately
 
+### Git Workflow
+
+**IMPORTANT: Never commit directly to main.** Always use feature branches.
+
+1. Create a feature branch: `git checkout -b feature/<name>`
+2. Make commits on the feature branch
+3. Push and create a PR
+4. Merge only after all checks pass
+
+### PR Workflow
+
+**When pushing a feature branch, always:**
+1. Create a PR using `gh pr create`
+2. Monitor CI checks in the background: use `gh pr checks <pr-number> --watch` with `run_in_background: true`
+3. Continue working on other tasks while checks run
+4. When notified of completion, check the result:
+   - If checks pass: proceed to merge
+   - If checks fail:
+     - Investigate the failure (use `gh pr checks` to see which check failed)
+     - For SonarQube failures: fix issues and log in `docs/sonarqube-issues-log.md`
+     - Push fixes and re-monitor until all checks pass
+5. Only merge once all checks are green
+
 ## Tech Stack
 
 ### Python Prototype (FastAPI)
