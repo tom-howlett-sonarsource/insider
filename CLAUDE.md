@@ -80,6 +80,7 @@ All SonarQube issues found during development are tracked in `docs/sonarqube-iss
    - How the issue was resolved
    - If from a blocked PR: note the PR number and that it was caught by CI
 3. Update the totals at the top of the file
+4. **Reassess "Common Patterns to Avoid"**: If this is a new rule or a recurring pattern, add it to the "Common Patterns to Avoid" section below so future sessions can proactively prevent it
 
 **Sources of SonarQube issues to track:**
 - Local analysis using `mcp__sonarqube__analyze_code_snippet` before commits
@@ -87,3 +88,19 @@ All SonarQube issues found during development are tracked in `docs/sonarqube-iss
 - Issues found via `mcp__sonarqube__search_sonar_issues_in_projects`
 
 This log helps track code quality improvements and common issue patterns over time.
+
+### Common Patterns to Avoid (Learned from Issues Log)
+
+**S1192 - Duplicated String Literals (CRITICAL)**
+- Extract any string used 3+ times into a constant
+- Common offenders: error messages, API endpoints, test data
+- Fix: Define constants at top of file (e.g., `INSIGHT_NOT_FOUND = "Insight not found"`)
+
+**S7503 - Async Without Await (MINOR)**
+- Only use `async def` when the function contains `await` calls
+- If no async operations, use regular `def`
+
+**When writing new code, proactively:**
+1. Define constants for repeated strings before duplicating them
+2. In tests: create constants for endpoints, test titles, descriptions
+3. Check if a function actually needs `async` before adding it
