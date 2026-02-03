@@ -39,6 +39,7 @@ jobs:
           args: >
             -Dsonar.organization=tom-howlett-sonarsource
             -Dsonar.projectKey=tom-howlett-sonarsource_insider
+            -Dsonar.sources=prototypes/python-fastapi
             -Dsonar.python.coverage.reportPaths=coverage-python.xml
             -Dsonar.python.version=3.14
 
