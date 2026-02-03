@@ -8,29 +8,44 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  sonarcloud-python:
-    name: SonarCloud Python
+  sonarcloud:
+    name: SonarCloud Analysis
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Python setup and tests
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           cd prototypes/python-fastapi
           pip install -e ".[dev]"
 
-      - name: Run tests with coverage
+      - name: Run Python tests with coverage
         run: |
           cd prototypes/python-fastapi
           pytest --cov=app --cov-report=xml:../../coverage-python.xml
 
+      # Java setup and tests
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test Java with Maven
+        run: |
+          cd prototypes/java-spring
+          mvn clean verify
+
+      # Single SonarCloud scan for all languages
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
@@ -39,36 +54,9 @@ jobs:
           args: >
             -Dsonar.organization=tom-howlett-sonarsource
             -Dsonar.projectKey=tom-howlett-sonarsource_insider
-            -Dsonar.sources=prototypes/python-fastapi
+            -Dsonar.sources=prototypes/python-fastapi/app,prototypes/java-spring/src/main/java
+            -Dsonar.tests=prototypes/python-fastapi/tests,prototypes/java-spring/src/test/java
             -Dsonar.python.coverage.reportPaths=coverage-python.xml
             -Dsonar.python.version=3.14
-
-  sonarcloud-java:
-    name: SonarCloud Java
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: prototypes/java-spring
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build and test with Maven
-        run: mvn clean verify
-
-      - name: SonarCloud Scan
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          mvn sonar:sonar
-          -Dsonar.organization=tom-howlett-sonarsource
-          -Dsonar.projectKey=tom-howlett-sonarsource_insider-java
-          -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.java.binaries=prototypes/java-spring/target/classes
+            -Dsonar.coverage.jacoco.xmlReportPaths=prototypes/java-spring/target/site/jacoco/jacoco.xml
