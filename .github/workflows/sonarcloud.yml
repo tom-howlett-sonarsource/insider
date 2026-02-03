@@ -43,7 +43,7 @@ jobs:
       - name: Build and test Java with Maven
         run: |
           cd prototypes/java-spring
-          mvn clean verify
+          mvn clean verify dependency:copy-dependencies
 
       # Single SonarCloud scan for all languages
       - name: SonarCloud Scan
@@ -59,4 +59,7 @@ jobs:
             -Dsonar.python.coverage.reportPaths=coverage-python.xml
             -Dsonar.python.version=3.14
             -Dsonar.java.binaries=prototypes/java-spring/target/classes
+            -Dsonar.java.libraries=prototypes/java-spring/target/dependency/*.jar
+            -Dsonar.java.test.binaries=prototypes/java-spring/target/test-classes
+            -Dsonar.java.test.libraries=prototypes/java-spring/target/dependency/*.jar
             -Dsonar.coverage.jacoco.xmlReportPaths=prototypes/java-spring/target/site/jacoco/jacoco.xml
