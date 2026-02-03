@@ -14,3 +14,7 @@ spring:
 jwt:
   secret: test-secret-key-for-testing-only-minimum-256-bits
   expiration-minutes: 30
+
+app:
+  seed:
+    password: testpassword123
