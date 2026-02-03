@@ -26,3 +26,8 @@ jwt:
 
 server:
   port: 8080
+
+# Application seed data configuration
+app:
+  seed:
+    password: ${SEED_PASSWORD:changeme}

@@ -15,14 +15,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class DataInitializer {
 
-    private static final String DEFAULT_PASSWORD = "password123";
+    private final String seedPassword;
+
+    public DataInitializer(
+            @org.springframework.beans.factory.annotation.Value("${app.seed.password}") String seedPassword) {
+        this.seedPassword = seedPassword;
+    }
 
     @Bean
     public ApplicationRunner initializeData(
             UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
             if (userRepository.count() == 0) {
-                String hashedPassword = passwordEncoder.encode(DEFAULT_PASSWORD);
+                String hashedPassword = passwordEncoder.encode(seedPassword);
 
                 User advocate =
                         new User(

@@ -18,7 +18,7 @@ Never write implementation code without a corresponding test.
 
 ### Git Workflow
 
-**IMPORTANT: Never commit directly to main.** Always use feature branches.
+**IMPORTANT: Never commit directly to main.** Always use feature branches. If I give other instructions to do otherwise then revert back to feature branches afterwards
 
 1. Create a feature branch: `git checkout -b feature/<name>`
 2. Make commits on the feature branch
@@ -38,6 +38,7 @@ Never write implementation code without a corresponding test.
      - For SonarQube failures: fix issues and log in `docs/sonarqube-issues-log.md`
      - Push fixes and re-monitor until all checks pass
 5. Only merge once all checks are green
+6. Once you have merged check the sonarqube quality gate in the background and alert if there is a problem
 
 ## Tech Stack
 
