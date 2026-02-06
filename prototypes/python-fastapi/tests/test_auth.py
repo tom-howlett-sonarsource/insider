@@ -1,4 +1,5 @@
 """Tests for authentication endpoints - TDD: write tests first."""
+import logging
 import uuid
 
 import pytest
@@ -16,6 +17,7 @@ AUTH_ENDPOINT = "/api/v1/auth/login"
 TEST_EMAIL = "test@example.com"
 TEST_PASSWORD = "testpassword123"
 TEST_NAME = "Test User"
+AUTH_LOGGER = "app.auth"
 
 
 @pytest.fixture
@@ -109,3 +111,61 @@ class TestLogin:
         )
 
         assert response.status_code == 422
+
+
+class TestLoginLogging:
+    """Tests for authentication logging."""
+
+    @pytest.mark.anyio
+    async def test_successful_login_logs_info(
+        self, client, test_user, caplog
+    ):
+        """Successful login logs INFO with email."""
+        with caplog.at_level(logging.INFO, logger=AUTH_LOGGER):
+            await client.post(
+                AUTH_ENDPOINT,
+                json={
+                    "email": TEST_EMAIL,
+                    "password": TEST_PASSWORD,
+                },
+            )
+        assert any(
+            "Login successful" in r.message and TEST_EMAIL in r.message
+            for r in caplog.records
+        )
+
+    @pytest.mark.anyio
+    async def test_failed_login_logs_warning(
+        self, client, test_user, caplog
+    ):
+        """Failed login logs WARNING with email."""
+        with caplog.at_level(logging.WARNING, logger=AUTH_LOGGER):
+            await client.post(
+                AUTH_ENDPOINT,
+                json={
+                    "email": TEST_EMAIL,
+                    "password": "wrongpassword",
+                },
+            )
+        assert any(
+            "Login failed" in r.message
+            and TEST_EMAIL in r.message
+            and r.levelno == logging.WARNING
+            for r in caplog.records
+        )
+
+    @pytest.mark.anyio
+    async def test_login_never_logs_password(
+        self, client, test_user, caplog
+    ):
+        """Login never logs the password."""
+        with caplog.at_level(logging.DEBUG, logger=AUTH_LOGGER):
+            await client.post(
+                AUTH_ENDPOINT,
+                json={
+                    "email": TEST_EMAIL,
+                    "password": TEST_PASSWORD,
+                },
+            )
+        for record in caplog.records:
+            assert TEST_PASSWORD not in record.message

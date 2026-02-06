@@ -1,4 +1,5 @@
 """Tests for the insights API endpoints - TDD: write tests first."""
+import logging
 import uuid
 
 import pytest
@@ -8,6 +9,7 @@ INSIGHTS_ENDPOINT = "/api/v1/insights"
 TEST_INSIGHT_TITLE = "Test insight"
 TEST_DESCRIPTION = "Test description"
 SOME_DESCRIPTION = "Some description"
+MAIN_LOGGER = "app.main"
 
 
 class TestListInsights:
@@ -266,3 +268,130 @@ class TestDeleteInsight:
         )
 
         assert response.status_code == 404
+
+
+class TestInsightLogging:
+    """Tests for insight CRUD operation logging."""
+
+    @pytest.mark.anyio
+    async def test_create_insight_logs_info(
+        self, client, auth_headers, caplog
+    ):
+        """Creating an insight logs INFO with insight_id and user_id."""
+        with caplog.at_level(logging.INFO, logger=MAIN_LOGGER):
+            response = await client.post(
+                INSIGHTS_ENDPOINT,
+                json={
+                    "title": TEST_INSIGHT_TITLE,
+                    "description": TEST_DESCRIPTION,
+                },
+                headers=auth_headers,
+            )
+        insight_id = response.json()["id"]
+        assert any(
+            "Insight created" in r.message and insight_id in r.message
+            for r in caplog.records
+        )
+
+    @pytest.mark.anyio
+    async def test_update_insight_logs_info(
+        self, client, auth_headers, caplog
+    ):
+        """Updating an insight logs INFO with insight_id."""
+        create_response = await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
+            },
+            headers=auth_headers,
+        )
+        insight_id = create_response.json()["id"]
+
+        with caplog.at_level(logging.INFO, logger=MAIN_LOGGER):
+            await client.put(
+                f"{INSIGHTS_ENDPOINT}/{insight_id}",
+                json={"title": "Updated"},
+                headers=auth_headers,
+            )
+        assert any(
+            "Insight updated" in r.message and insight_id in r.message
+            for r in caplog.records
+        )
+
+    @pytest.mark.anyio
+    async def test_delete_insight_logs_info(
+        self, client, auth_headers, caplog
+    ):
+        """Deleting an insight logs INFO with insight_id."""
+        create_response = await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
+            },
+            headers=auth_headers,
+        )
+        insight_id = create_response.json()["id"]
+
+        with caplog.at_level(logging.INFO, logger=MAIN_LOGGER):
+            await client.delete(
+                f"{INSIGHTS_ENDPOINT}/{insight_id}",
+                headers=auth_headers,
+            )
+        assert any(
+            "Insight deleted" in r.message and insight_id in r.message
+            for r in caplog.records
+        )
+
+    @pytest.mark.anyio
+    async def test_authorization_failure_logs_warning(
+        self, client, auth_headers, engine, caplog
+    ):
+        """Authorization failure on update logs WARNING."""
+        from sqlalchemy.orm import sessionmaker
+
+        from app.db_models import UserDB
+        from app.security import create_access_token, get_password_hash
+
+        # Create insight as test user
+        create_response = await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": TEST_INSIGHT_TITLE,
+                "description": TEST_DESCRIPTION,
+            },
+            headers=auth_headers,
+        )
+        insight_id = create_response.json()["id"]
+
+        # Create another user
+        other_email = "other@example.com"
+        session_factory = sessionmaker(
+            autocommit=False, autoflush=False, bind=engine
+        )
+        with session_factory() as session:
+            other_user = UserDB(
+                id=uuid.uuid4(),
+                email=other_email,
+                name="Other User",
+                hashed_password=get_password_hash("password"),
+                role="advocate",
+            )
+            session.add(other_user)
+            session.commit()
+
+        other_token = create_access_token(data={"sub": other_email})
+        other_headers = {"Authorization": f"Bearer {other_token}"}
+
+        with caplog.at_level(logging.WARNING, logger=MAIN_LOGGER):
+            await client.put(
+                f"{INSIGHTS_ENDPOINT}/{insight_id}",
+                json={"title": "Hacked"},
+                headers=other_headers,
+            )
+        assert any(
+            "Authorization denied" in r.message
+            and r.levelno == logging.WARNING
+            for r in caplog.records
+        )
