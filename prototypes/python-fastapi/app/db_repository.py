@@ -6,7 +6,10 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.db_models import InsightDB
+from app.logging_config import get_logger
 from app.models import Insight
+
+logger = get_logger("app.repository.insight")
 
 
 class InsightDBRepository:
@@ -17,6 +20,7 @@ class InsightDBRepository:
 
     def get_all(self, limit: int = 20, offset: int = 0) -> tuple[list[Insight], int]:
         """Get all insights with pagination."""
+        logger.debug("get_all: limit=%d offset=%d", limit, offset)
         total = self._session.query(InsightDB).count()
 
         db_insights = (
@@ -31,6 +35,7 @@ class InsightDBRepository:
 
     def get_by_id(self, insight_id: uuid.UUID) -> Insight | None:
         """Get an insight by ID."""
+        logger.debug("get_by_id: insight_id=%s", insight_id)
         db_insight = (
             self._session.query(InsightDB)
             .filter(InsightDB.id == str(insight_id))
@@ -44,6 +49,7 @@ class InsightDBRepository:
 
     def create(self, insight: Insight) -> Insight:
         """Create a new insight."""
+        logger.debug("create: insight_id=%s", insight.id)
         db_insight = InsightDB.from_domain(insight)
         self._session.add(db_insight)
         self._session.commit()
@@ -52,6 +58,7 @@ class InsightDBRepository:
 
     def update(self, insight_id: uuid.UUID, **kwargs) -> Insight | None:
         """Update an insight."""
+        logger.debug("update: insight_id=%s", insight_id)
         db_insight = (
             self._session.query(InsightDB)
             .filter(InsightDB.id == str(insight_id))
@@ -75,6 +82,7 @@ class InsightDBRepository:
 
     def delete(self, insight_id: uuid.UUID) -> bool:
         """Delete an insight. Returns True if deleted, False if not found."""
+        logger.debug("delete: insight_id=%s", insight_id)
         db_insight = (
             self._session.query(InsightDB)
             .filter(InsightDB.id == str(insight_id))

@@ -4,7 +4,10 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.db_models import UserDB
+from app.logging_config import get_logger
 from app.security import get_password_hash
+
+logger = get_logger("app.seed")
 
 # Default seed users for development
 SEED_USERS = [
@@ -40,4 +43,5 @@ def seed_users(session: Session) -> None:
                 role=user_data["role"],
             )
             session.add(user)
+            logger.info("Seeded user: %s", user_data["email"])
     session.commit()

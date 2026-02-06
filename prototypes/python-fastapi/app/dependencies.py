@@ -5,9 +5,12 @@ from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.logging_config import get_logger
 from app.models import User
 from app.security import decode_token
 from app.user_repository import UserDBRepository
+
+logger = get_logger("app.security")
 
 security = HTTPBearer()
 
@@ -30,13 +33,16 @@ def get_current_user(
         payload = decode_token(credentials.credentials)
         email: str | None = payload.get("sub")
         if email is None:
+            logger.warning("JWT token missing subject claim")
             raise credentials_exception
     except JWTError:
+        logger.warning("Invalid or expired JWT token")
         raise credentials_exception
 
     user_repo = UserDBRepository(db)
     user = user_repo.get_by_email(email)
     if user is None:
+        logger.warning("User not found for email in JWT: %s", email)
         raise credentials_exception
 
     return user

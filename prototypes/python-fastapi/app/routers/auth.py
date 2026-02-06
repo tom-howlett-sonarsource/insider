@@ -4,8 +4,11 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.logging_config import get_logger
 from app.security import create_access_token, verify_password
 from app.user_repository import UserDBRepository
+
+logger = get_logger("app.auth")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -37,6 +40,7 @@ async def login(
     user, hashed_password = user_repo.get_by_email_with_password(request.email)
 
     if not user or not hashed_password:
+        logger.warning("Login failed: email=%s", request.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INVALID_CREDENTIALS,
@@ -44,6 +48,7 @@ async def login(
         )
 
     if not verify_password(request.password, hashed_password):
+        logger.warning("Login failed: email=%s", request.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INVALID_CREDENTIALS,
@@ -51,4 +56,5 @@ async def login(
         )
 
     access_token = create_access_token(data={"sub": user.email})
+    logger.info("Login successful: email=%s", user.email)
     return TokenResponse(access_token=access_token)

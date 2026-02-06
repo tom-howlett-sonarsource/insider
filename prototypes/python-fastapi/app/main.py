@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, create_tables, get_db
 from app.db_repository import InsightDBRepository
 from app.dependencies import get_current_user
+from app.logging_config import get_logger, setup_logging
+from app.middleware import LoggingMiddleware
 from app.models import Insight, User
 from app.routers import auth, users
 from app.seed import seed_users
@@ -18,6 +20,8 @@ from app.schemas import (
     InsightUpdate,
 )
 
+logger = get_logger("app.main")
+
 # Error message constants
 INSIGHT_NOT_FOUND = "Insight not found"
 NOT_AUTHORIZED = "Not authorized to modify this insight"
@@ -26,11 +30,14 @@ NOT_AUTHORIZED = "Not authorized to modify this insight"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown."""
+    setup_logging()
+    logger.info("Insider API starting up")
     create_tables()
     # Seed default users for development
     with SessionLocal() as session:
         seed_users(session)
     yield
+    logger.info("Insider API shutting down")
 
 
 app = FastAPI(
@@ -39,6 +46,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(LoggingMiddleware)
 
 # Include routers
 app.include_router(auth.router)
@@ -85,6 +94,11 @@ async def create_insight(
         author_id=current_user.id,
     )
     created = repository.create(insight)
+    logger.info(
+        "Insight created: insight_id=%s user_id=%s",
+        created.id,
+        current_user.id,
+    )
     return InsightResponse(**created.model_dump())
 
 
@@ -121,6 +135,12 @@ async def update_insight(
 
     # Check if user is the author
     if insight.author_id != current_user.id:
+        logger.warning(
+            "Authorization denied: user_id=%s attempted to update insight_id=%s owned by %s",
+            current_user.id,
+            insight_id,
+            insight.author_id,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=NOT_AUTHORIZED,
@@ -128,6 +148,11 @@ async def update_insight(
 
     update_data = insight_data.model_dump(exclude_unset=True)
     updated = repository.update(insight_id, **update_data)
+    logger.info(
+        "Insight updated: insight_id=%s user_id=%s",
+        insight_id,
+        current_user.id,
+    )
     return InsightResponse(**updated.model_dump())
 
 
@@ -150,10 +175,21 @@ async def delete_insight(
 
     # Check if user is the author
     if insight.author_id != current_user.id:
+        logger.warning(
+            "Authorization denied: user_id=%s attempted to delete insight_id=%s owned by %s",
+            current_user.id,
+            insight_id,
+            insight.author_id,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=NOT_AUTHORIZED,
         )
 
     repository.delete(insight_id)
+    logger.info(
+        "Insight deleted: insight_id=%s user_id=%s",
+        insight_id,
+        current_user.id,
+    )
     return None
