@@ -27,18 +27,7 @@ Never write implementation code without a corresponding test.
 
 ### PR Workflow
 
-**When pushing a feature branch, always:**
-1. Create a PR using `gh pr create`
-2. Monitor CI checks in the background: use `gh pr checks <pr-number> --watch` with `run_in_background: true`
-3. Continue working on other tasks while checks run
-4. When notified of completion, check the result:
-   - If checks pass: proceed to merge
-   - If checks fail:
-     - Investigate the failure (use `gh pr checks` to see which check failed)
-     - For SonarQube failures: fix issues and log in `docs/sonarqube-issues-log.md`
-     - Push fixes and re-monitor until all checks pass
-5. Only merge once all checks are green
-6. Once you have merged check the sonarqube quality gate in the background and alert if there is a problem
+Use the `/pr` skill to handle the full PR lifecycle (create, monitor, fix, merge).
 
 ## Tech Stack
 
@@ -59,59 +48,10 @@ pytest --cov
 
 ## Code Analysis
 
-Use the SonarQube MCP server to analyze code quality:
-- Check for bugs, code smells, and security vulnerabilities
-- Review issues before creating PRs
-- Ensure quality gate passes before merge
+Use the `/analyze` skill before every commit to run SonarQube analysis on modified files.
 
-### Before Every Commit
-
-**IMPORTANT:** Always analyze code with SonarQube MCP before committing:
-
-1. Use `mcp__sonarqube__analyze_code_snippet` to check each modified Python file
-2. Fix any issues found (especially CRITICAL and HIGH severity)
-3. Re-analyze to confirm fixes
-4. Only then proceed with commit
-
-Example usage:
-```
-mcp__sonarqube__analyze_code_snippet(
-    projectKey="tom-howlett-sonarsource_insider",
-    codeSnippet="<file contents>",
-    language="python"
-)
-```
-
-The tool returns issues with:
-- `ruleKey`: The SonarQube rule that was violated
-- `primaryMessage`: Description of the issue
-- `severity`: CRITICAL, HIGH, MEDIUM, LOW, INFO
-- `textRange`: Location of the issue in the code
-
-### SonarQube Issues Log
-
-All SonarQube issues found during development are tracked in `docs/sonarqube-issues-log.md`.
-
-**When you find and fix a SonarQube issue (either locally or from a blocked PR), you must:**
-1. Add an entry to the summary table with date, file, rule, severity, and attempts to fix
-2. Add a detailed log entry with:
-   - Date and file path
-   - MCP method used (e.g., `mcp__sonarqube__analyze_code_snippet`)
-   - Rule ID and description
-   - Severity and impact
-   - The exact message from SonarQube
-   - Number of attempts to fix
-   - How the issue was resolved
-   - If from a blocked PR: note the PR number and that it was caught by CI
-3. Update the totals at the top of the file
-4. **Reassess "Common Patterns to Avoid"**: If this is a new rule or a recurring pattern, add it to the "Common Patterns to Avoid" section below so future sessions can proactively prevent it
-
-**Sources of SonarQube issues to track:**
-- Local analysis using `mcp__sonarqube__analyze_code_snippet` before commits
-- PR quality gate failures from SonarCloud CI
-- Issues found via `mcp__sonarqube__search_sonar_issues_in_projects`
-
-This log helps track code quality improvements and common issue patterns over time.
+- All SonarQube issues are tracked in `docs/sonarqube-issues-log.md`
+- PRs must pass quality gates before merge
 
 ### Common Patterns to Avoid (Learned from Issues Log)
 
