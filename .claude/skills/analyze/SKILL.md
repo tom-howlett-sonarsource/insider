@@ -44,13 +44,4 @@ For each issue found:
 
 ## Step 3: Log fixes
 
-When an issue has been fixed, log it in `docs/sonarqube-issues-log.md`:
-
-1. Add an entry to the summary table with date, file, rule, severity, and attempts to fix
-2. Add a detailed log entry with:
-   - Date and file path
-   - MCP method used (`mcp__sonarqube-a3s__run_advanced_code_analysis`)
-   - Rule ID, description, severity, and the exact SonarQube message
-   - Number of attempts to fix and how it was resolved
-3. Update the totals at the top of the file
-4. If this is a new or recurring rule, add it to "Common Patterns to Avoid" in CLAUDE.md so future sessions avoid it proactively
+After fixing issues, use the `/log-issue` skill to log each fix to `docs/sonarqube-issues-log.md`.

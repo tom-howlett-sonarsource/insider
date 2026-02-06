@@ -51,7 +51,7 @@ When checks complete:
 2. For SonarQube failures:
    - Use `mcp__sonarqube-a3s__search_sonar_issues_in_projects` to find the issues
    - Fix the issues
-   - Log them in `docs/sonarqube-issues-log.md`
+   - Use the `/log-issue` skill to log each fix (note the PR number as the source)
 3. Commit and push fixes
 4. Re-monitor checks: `gh pr checks <pr-number> --watch` with `run_in_background: true`
 5. Repeat until all checks pass
