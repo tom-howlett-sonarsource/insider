@@ -26,16 +26,6 @@ Never write implementation code without a corresponding test.
 - Database: SQLite (initial)
 - Testing: pytest
 
-## Commands
-
-```bash
-# Run tests (from prototypes/python-fastapi/)
-pytest
-
-# Run with coverage
-pytest --cov
-```
-
 ### Common Patterns to Avoid (Learned from Issues Log)
 
 **S1192 - Duplicated String Literals (CRITICAL)**
