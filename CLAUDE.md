@@ -10,24 +10,14 @@ All new code must follow test-first development:
 
 Never write implementation code without a corresponding test.
 
-### Code Quality
-- All code is analyzed by SonarCloud via the SonarQube MCP
-- Use the SonarQube MCP to check for issues before committing
-- PRs must pass quality gates before merge
-- Address security hotspots immediately
-
 ### Git Workflow
 
-**IMPORTANT: Never commit directly to main.** Always use feature branches. If I give other instructions to do otherwise then revert back to feature branches afterwards
+**IMPORTANT: Never commit directly to main.** Always use feature branches. If I give other instructions to do otherwise then revert back to feature branches afterwards.
 
 1. Create a feature branch: `git checkout -b feature/<name>`
 2. Make commits on the feature branch
-3. Push and create a PR
-4. Merge only after all checks pass
-
-### PR Workflow
-
-**IMPORTANT: Always use the `/pr` skill for PRs.** Never create PRs manually with `gh pr create` — the `/pr` skill handles the full lifecycle: create, monitor CI checks, fix failures, and merge (with user permission). Manually creating PRs skips CI monitoring and merge steps.
+3. **Always use `/analyze` before every commit.** Never call SonarQube MCP tools directly for analysis — the skill handles analysis, rule lookup, fixes, and logging to `docs/sonarqube-issues-log.md` automatically.
+4. **Always use `/pr` to push and create PRs.** Never use `gh pr create` directly — the skill handles the full lifecycle: create, monitor CI checks, fix failures, and merge (with user permission).
 
 ## Tech Stack
 
@@ -45,13 +35,6 @@ pytest
 # Run with coverage
 pytest --cov
 ```
-
-## Code Analysis
-
-Use the `/analyze` skill before every commit to run SonarQube analysis on modified files.
-
-- All SonarQube issues are tracked in `docs/sonarqube-issues-log.md`
-- PRs must pass quality gates before merge
 
 ### Common Patterns to Avoid (Learned from Issues Log)
 
