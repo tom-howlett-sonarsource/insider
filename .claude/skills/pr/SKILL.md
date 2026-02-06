@@ -39,9 +39,9 @@ Handle the full pull request lifecycle: create, monitor, fix, and merge.
 When checks complete:
 
 **If all checks pass:**
-1. Inform the user
-2. Ask if they want to merge (or merge if they've indicated to proceed)
-3. Merge with `gh pr merge <pr-number> --merge`
+1. Inform the user that all checks have passed
+2. **ALWAYS ask the user for explicit permission before merging. Never merge automatically.**
+3. Only after the user confirms, merge with `gh pr merge <pr-number> --merge`
 4. After merge, check the SonarQube quality gate in the background:
    - Use `mcp__sonarqube-a3s__get_project_quality_gate_status` with `projectKey: tom-howlett-sonarsource_insider`
    - Alert the user if quality gate fails
@@ -51,7 +51,7 @@ When checks complete:
 2. For SonarQube failures:
    - Use `mcp__sonarqube-a3s__search_sonar_issues_in_projects` to find the issues
    - Fix the issues
-   - Log them in `docs/sonarqube-issues-log.md`
+   - Use the `/log-issue` skill to log each fix (note the PR number as the source)
 3. Commit and push fixes
 4. Re-monitor checks: `gh pr checks <pr-number> --watch` with `run_in_background: true`
 5. Repeat until all checks pass
