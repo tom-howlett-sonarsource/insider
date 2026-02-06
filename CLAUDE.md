@@ -27,7 +27,7 @@ Never write implementation code without a corresponding test.
 
 ### PR Workflow
 
-Use the `/pr` skill to handle the full PR lifecycle (create, monitor, fix, merge).
+**IMPORTANT: Always use the `/pr` skill for PRs.** Never create PRs manually with `gh pr create` — the `/pr` skill handles the full lifecycle: create, monitor CI checks, fix failures, and merge (with user permission). Manually creating PRs skips CI monitoring and merge steps.
 
 ## Tech Stack
 
