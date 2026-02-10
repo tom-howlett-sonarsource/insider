@@ -7,6 +7,7 @@ All new code must follow test-first development:
 1. Write a failing test first
 2. Write the minimum code to make it pass
 3. Refactor while keeping tests green
+4. Ensure Code Coverage of any change > 80%
 
 Never write implementation code without a corresponding test.
 
@@ -16,28 +17,7 @@ Never write implementation code without a corresponding test.
 
 1. Create a feature branch: `git checkout -b feature/<name>`
 2. Make commits on the feature branch
-3. **Always use `/analyze` before every commit.** Never call SonarQube MCP tools directly for analysis — the skill handles analysis, rule lookup, fixes, and logging to `docs/sonarqube-issues-log.md` automatically.
+3. **Before completing a task that changes or writes code and always before a commit use `/analyze`** Never call SonarQube MCP tools directly for analysis — the skill handles analysis, rule lookup, fixes, and logging to `docs/sonarqube-issues-log.md` automatically.
 4. **Always use `/pr` to push and create PRs.** Never use `gh pr create` directly — the skill handles the full lifecycle: create, monitor CI checks, fix failures, and merge (with user permission).
 
-## Tech Stack
 
-### Python Prototype (FastAPI)
-- Framework: FastAPI
-- Database: SQLite (initial)
-- Testing: pytest
-
-### Common Patterns to Avoid (Learned from Issues Log)
-
-**S1192 - Duplicated String Literals (CRITICAL)**
-- Extract any string used 3+ times into a constant
-- Common offenders: error messages, API endpoints, test data
-- Fix: Define constants at top of file (e.g., `INSIGHT_NOT_FOUND = "Insight not found"`)
-
-**S7503 - Async Without Await (MINOR)**
-- Only use `async def` when the function contains `await` calls
-- If no async operations, use regular `def`
-
-**When writing new code, proactively:**
-1. Define constants for repeated strings before duplicating them
-2. In tests: create constants for endpoints, test titles, descriptions
-3. Check if a function actually needs `async` before adding it
