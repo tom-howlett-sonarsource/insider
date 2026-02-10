@@ -1,15 +1,20 @@
 """Tests for the insights API endpoints - TDD: write tests first."""
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 # Test constants
 INSIGHTS_ENDPOINT = "/api/v1/insights"
+ANALYTICS_ENDPOINT = "/api/v1/insights/analytics"
+EXPORT_ENDPOINT = "/api/v1/insights/export"
 TEST_INSIGHT_TITLE = "Test insight"
 TEST_DESCRIPTION = "Test description"
 SOME_DESCRIPTION = "Some description"
 MAIN_LOGGER = "app.main"
+WEBHOOK_URL = "https://hooks.example.com/notify"
 
 
 class TestListInsights:
@@ -395,3 +400,190 @@ class TestInsightLogging:
             and r.levelno == logging.WARNING
             for r in caplog.records
         )
+
+
+class TestInsightsAnalytics:
+    """Tests for GET /api/v1/insights/analytics."""
+
+    @pytest.mark.anyio
+    async def test_analytics_empty(self, client, auth_headers):
+        """Returns zero counts when no insights exist."""
+        response = await client.get(ANALYTICS_ENDPOINT, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_count"] == 0
+        assert data["count_by_source"] == {}
+        assert data["count_by_author"] == {}
+        assert len(data["insights_per_week"]) == 8
+
+    @pytest.mark.anyio
+    async def test_analytics_with_insights(self, client, auth_headers):
+        """Returns correct statistics when insights exist."""
+        # Create insights with different sources
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Insight 1",
+                "description": "Description 1",
+                "source": "community_forum",
+            },
+            headers=auth_headers,
+        )
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Insight 2",
+                "description": "Description 2",
+                "source": "conference",
+            },
+            headers=auth_headers,
+        )
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Insight 3",
+                "description": "Description 3",
+                "source": "community_forum",
+            },
+            headers=auth_headers,
+        )
+
+        response = await client.get(ANALYTICS_ENDPOINT, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_count"] == 3
+        assert data["count_by_source"]["community_forum"] == 2
+        assert data["count_by_source"]["conference"] == 1
+        assert len(data["count_by_author"]) == 1
+
+    @pytest.mark.anyio
+    async def test_analytics_insights_per_week(self, client, auth_headers):
+        """Returns insights per week for last 8 weeks."""
+        response = await client.get(ANALYTICS_ENDPOINT, headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["insights_per_week"]) == 8
+        # Verify structure of each week entry
+        for week in data["insights_per_week"]:
+            assert "week_start" in week
+            assert "count" in week
+
+    @pytest.mark.anyio
+    async def test_analytics_without_auth_returns_401(self, client):
+        """Returns 401 when no token provided."""
+        response = await client.get(ANALYTICS_ENDPOINT)
+
+        assert response.status_code == 401
+
+
+class TestInsightsExport:
+    """Tests for POST /api/v1/insights/export."""
+
+    @pytest.mark.anyio
+    async def test_export_creates_csv(self, client, auth_headers):
+        """Creates CSV file with insights data."""
+        # Create some test insights
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Test Insight",
+                "description": "Test Description",
+                "source": "community_forum",
+            },
+            headers=auth_headers,
+        )
+
+        # Mock the webhook call
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        with patch("httpx.AsyncClient.__aenter__") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            response = await client.post(EXPORT_ENDPOINT, headers=auth_headers)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "message" in data
+            assert "exported_count" in data
+            assert data["exported_count"] == 1
+
+    @pytest.mark.anyio
+    async def test_export_sends_webhook_notification(
+        self, client, auth_headers
+    ):
+        """Sends notification to webhook after export."""
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Test",
+                "description": "Test",
+            },
+            headers=auth_headers,
+        )
+
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        with patch("httpx.AsyncClient.__aenter__") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            response = await client.post(EXPORT_ENDPOINT, headers=auth_headers)
+
+            assert response.status_code == 200
+            # Verify webhook was called
+            mock_instance.post.assert_called_once()
+            call_args = mock_instance.post.call_args
+            assert WEBHOOK_URL in str(call_args)
+
+    @pytest.mark.anyio
+    async def test_export_empty_insights(self, client, auth_headers):
+        """Handles export when no insights exist."""
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        with patch("httpx.AsyncClient.__aenter__") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            response = await client.post(EXPORT_ENDPOINT, headers=auth_headers)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["exported_count"] == 0
+
+    @pytest.mark.anyio
+    async def test_export_without_auth_returns_401(self, client):
+        """Returns 401 when no token provided."""
+        response = await client.post(EXPORT_ENDPOINT)
+
+        assert response.status_code == 401
+
+    @pytest.mark.anyio
+    async def test_export_webhook_failure_still_succeeds(
+        self, client, auth_headers
+    ):
+        """Export succeeds even if webhook fails."""
+        await client.post(
+            INSIGHTS_ENDPOINT,
+            json={
+                "title": "Test",
+                "description": "Test",
+            },
+            headers=auth_headers,
+        )
+
+        with patch("httpx.AsyncClient.__aenter__") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.side_effect = Exception("Webhook error")
+            mock_client.return_value = mock_instance
+
+            response = await client.post(EXPORT_ENDPOINT, headers=auth_headers)
+
+            # Export should still succeed
+            assert response.status_code == 200
