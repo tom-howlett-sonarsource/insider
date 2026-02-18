@@ -56,7 +56,38 @@ Should show all passing (existing tests). Close that output before the audience 
 
 ---
 
-## Beat 2 — Start the Task `[30 sec]`
+## Beat 2 — The MCP Connection `[1 min]`
+
+**SCREEN:** Terminal
+
+**SAY:**
+> "Before I start the task — let me show you the SonarQube MCP is live. This isn't a mock. It's connected to a real SonarQube Cloud project right now."
+
+**ACTION:** Type in the terminal:
+
+```
+/mcp
+```
+
+**LOOK FOR:** `sonarqube-a3s` listed as a connected server with a green status indicator.
+
+**POINT at it:**
+> "That's the A3S MCP server. Claude Code has it registered — so every tool call you're about to see, `run_advanced_code_analysis`, `show_rule` — those go directly to SonarQube Cloud. No wrapper, no middleware."
+
+**ACTION:** To prove it's live, ask Claude:
+
+```
+Which SonarQube projects do I have access to?
+```
+
+**LOOK FOR:** The `search_my_sonarqube_projects` call and the response showing `tom-howlett-sonarsource_insider`.
+
+**SAY:**
+> "There's the project. Same one we'll be analysing in a moment."
+
+---
+
+## Beat 3 — Start the Task `[30 sec]`
 
 **SCREEN:** Terminal (full screen, font 18pt+)
 
@@ -78,7 +109,7 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 
 ---
 
-## Beat 3 — The Contract (during PAUSE 1) `[3 min]`
+## Beat 4 — The Contract (during PAUSE 1) `[3 min]`
 
 **SCREEN:** Leave the PAUSE 1 prompt visible in terminal. Switch right pane to `docs/tasks/analytics-export-endpoints.md`.
 
@@ -115,7 +146,7 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 
 ---
 
-## Beat 4 — Red Phase `[~2 min — narrate as it runs]`
+## Beat 5 — Red Phase `[~2 min — narrate as it runs]`
 
 **SCREEN:** Terminal left (Claude Code), task spec right
 
@@ -134,7 +165,7 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 
 ---
 
-## Beat 5 — Green Phase `[~2 min — narrate as it runs]`
+## Beat 6 — Green Phase `[~2 min — narrate as it runs]`
 
 **SCREEN:** Terminal (Claude writing implementation files)
 
@@ -158,7 +189,7 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 
 ---
 
-## Beat 6 — The Analysis `[~2 min]` ← **Main Event Begins**
+## Beat 7 — The Analysis `[~2 min]` ← **Main Event Begins**
 
 **SCREEN:** Full-screen terminal. Close the right pane if possible — this needs space.
 
@@ -182,7 +213,7 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 
 ---
 
-## Beat 7 — The Finding `[1 min]` ← **Climax**
+## Beat 8 — The Finding `[1 min]` ← **Climax**
 
 **LOOK FOR** in the results:
 
@@ -208,7 +239,7 @@ Read the message aloud slowly:
 
 ---
 
-## Beat 8 — The Rule `[1.5 min]`
+## Beat 9 — The Rule `[1.5 min]`
 
 **SCREEN:** Watch Claude call `show_rule`
 
@@ -226,7 +257,7 @@ Read the message aloud slowly:
 
 ---
 
-## Beat 9 — The Fix `[1 min]`
+## Beat 10 — The Fix `[1 min]`
 
 **SCREEN:** Watch Claude apply the fix
 
@@ -252,7 +283,7 @@ Read the message aloud slowly:
 
 ---
 
-## Beat 10 — The Full Loop `[2 min]` *(run if time allows)*
+## Beat 11 — The Full Loop `[2 min]` *(run if time allows)*
 
 **ACTION:** After Claude commits, watch it type `/pr`
 
@@ -269,7 +300,7 @@ Read the message aloud slowly:
 
 ---
 
-## Beat 11 — Wrap-up `[1 min]`
+## Beat 12 — Wrap-up `[1 min]`
 
 **SCREEN:** Blank terminal or slide
 
@@ -317,18 +348,19 @@ git checkout -- prototypes/python-fastapi/app/main.py
 | Beat | What's on screen | Duration |
 |------|-----------------|----------|
 | 1 · Problem | Slide / whiteboard | 2 min |
-| 2 · Start task | Terminal — Claude reading files | 30 sec |
+| 2 · MCP connection | Terminal — `/mcp` + project list | 1 min |
+| 3 · Start task | Terminal — Claude reading files | 30 sec |
 | **⏸️ PAUSE 1** | AskUserQuestion prompt on screen | — |
-| 3 · Contract | Task spec + `CLAUDE.md` + skill file (while paused) | 3 min |
-| 4 · Red phase | Terminal — failing tests + PAUSE 2 prompt | ~2 min |
-| 5 · Green phase | Terminal — 30 passed + PAUSE 3 prompt | ~2 min |
-| 6 · Analysis | Terminal — 4 parallel A3S calls | ~2 min |
-| 7 · Finding | Terminal — issue + severity | 1 min |
-| 8 · Rule | Terminal — rule explanation | 1.5 min |
-| 9 · Fix | Terminal — before/after + re-analysis | 1 min |
-| 10 · PR loop | Terminal + browser (optional) | 2 min |
-| 11 · Wrap-up | Slide or blank | 1 min |
-| **Total** | | **~18–20 min** |
+| 4 · Contract | Task spec + `CLAUDE.md` + skill file (while paused) | 3 min |
+| 5 · Red phase | Terminal — failing tests + PAUSE 2 prompt | ~2 min |
+| 6 · Green phase | Terminal — 30 passed + PAUSE 3 prompt | ~2 min |
+| 7 · Analysis | Terminal — 4 parallel A3S calls | ~2 min |
+| 8 · Finding | Terminal — issue + severity | 1 min |
+| 9 · Rule | Terminal — rule explanation | 1.5 min |
+| 10 · Fix | Terminal — before/after + re-analysis | 1 min |
+| 11 · PR loop | Terminal + browser (optional) | 2 min |
+| 12 · Wrap-up | Slide or blank | 1 min |
+| **Total** | | **~19–21 min** |
 
 ---
 
