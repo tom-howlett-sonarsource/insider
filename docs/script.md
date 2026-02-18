@@ -56,45 +56,12 @@ Should show all passing (existing tests). Close that output before the audience 
 
 ---
 
-## Beat 2 — The Workflow Contract `[2 min]`
+## Beat 2 — Start the Task `[30 sec]`
 
-**SCREEN:** Switch to terminal. Open `CLAUDE.md`.
-
-```
-cat CLAUDE.md
-```
-*(or open in VS Code right pane)*
-
-**POINT TO line 20:**
-> *"Before completing a task that changes or writes code and always before a commit use `/analyze`"*
+**SCREEN:** Terminal (full screen, font 18pt+)
 
 **SAY:**
-> "Every project has a CLAUDE.md — the rules of engagement for this agent. Ours makes one thing non-negotiable: before any commit, run `/analyze`. The agent can't skip it."
-
-**SCREEN:** Open `.claude/skills/analyze/SKILL.md`
-
-**POINT TO the `allowed-tools` line:**
-> *`allowed-tools: Read, Glob, Grep, Bash(git diff *), Bash(git status *)`*
-
-**SAY:**
-> "This is the skill definition. Notice the tool permissions: it can read files and run git diffs. It can't write to GitHub. Each skill has explicit, narrow permissions — this is how you keep an agent trustworthy."
-
-> "When `/analyze` runs, it reads every modified file, sends each one to A3S with the project key and branch name, and then — importantly — looks up the rule rationale before applying any fix. Not blindly suppressing. Understanding."
-
-**PAUSE:** Let that land. Then:
-
-> "Let's see it in action."
-
----
-
-## Beat 3 — The Task `[1 min]`
-
-**SCREEN:** Switch right pane to `docs/tasks/analytics-export-endpoints.md`. Scroll to show structure.
-
-**SAY:**
-> "Here's the task. We're adding two endpoints to a FastAPI prototype: an analytics summary, and a CSV export with a webhook notification. Real-world feature work."
-
-> "The spec says TDD: tests first, minimum implementation, then analyse before committing. Let's run it."
+> "Let me show you what this looks like end to end. I'm going to give the agent a real task and let it run."
 
 **ACTION:** Type in the terminal:
 
@@ -102,8 +69,49 @@ cat CLAUDE.md
 Implement the task described in docs/tasks/analytics-export-endpoints.md
 ```
 
-**SAY** (as Claude begins):
-> "While this runs, watch the right pane — you can follow along with the spec as Claude works through it. I'll call out the key moments."
+**SAY** (as Claude begins reading files):
+> "It's reading the codebase — the existing endpoints, the test fixtures, the schemas. Building up context before writing a single line."
+
+**WAIT** for Claude to hit PAUSE 1 — it will show a prompt: *"I've read the codebase and have a clear plan. Ready for me to start writing the schemas and tests?"*
+
+**DO NOT CLICK YES YET.** Leave the question on screen.
+
+---
+
+## Beat 3 — The Contract (during PAUSE 1) `[3 min]`
+
+**SCREEN:** Leave the PAUSE 1 prompt visible in terminal. Switch right pane to `docs/tasks/analytics-export-endpoints.md`.
+
+**SAY:**
+> "While it's waiting — let me show you what it's been given. Here's the task spec."
+
+**POINT TO** the Objective section:
+> "Two new API endpoints. An analytics summary, and a CSV export with a webhook notification. Real feature work — not a toy example."
+
+**POINT TO** the TDD section at the top:
+> "The spec mandates TDD: tests first, minimum implementation to pass, then analyse before committing."
+
+**SCREEN:** Switch right pane to `CLAUDE.md` (or `cat CLAUDE.md` in a second terminal pane)
+
+**POINT TO line 20:**
+> *"Before completing a task that changes or writes code and always before a commit use `/analyze`"*
+
+**SAY:**
+> "Every project has a CLAUDE.md — the rules of engagement for this agent. Ours makes one thing non-negotiable: before any commit, run `/analyze`. The agent can't skip it."
+
+**SCREEN:** Open `.claude/skills/analyze/SKILL.md` (or show the skills list)
+
+**SAY:**
+> "Skills are the mechanism. Each one is a scoped instruction file — this one tells the agent how to analyse code, look up rules, fix issues, and log them. It has explicit, narrow permissions — it can read files and run git diffs. It can't push to GitHub on its own."
+
+> "When `/analyze` runs, it reads every modified file, sends each to A3S with the project key and branch name, then looks up the rule rationale before applying any fix. Not blindly suppressing. Understanding."
+
+**PAUSE.** Let that land. Then turn back to the terminal.
+
+**SAY:**
+> "OK — let's let it run."
+
+**ACTION:** Click **"Yes, start coding"** in the AskUserQuestion prompt.
 
 ---
 
@@ -116,18 +124,13 @@ Implement the task described in docs/tasks/analytics-export-endpoints.md
 **SAY** (point to the test file being written):
 > "Tests first. This is TDD in practice — Claude is writing the failing tests before a single line of implementation exists."
 
-**LOOK FOR:** Test run output. You should see something like:
+**WAIT** for Claude to hit PAUSE 2 — it shows the failing test output and asks: *"Tests written and failing as expected — the TDD red state. Ready to implement?"*
 
-```
-FAILED tests/test_api_insights.py::TestAnalyticsInsights::test_analytics_empty_database
-FAILED tests/test_api_insights.py::TestExportInsights::test_export_returns_count
-...
-5 failed, 1 passed
-```
-
-**PAUSE** and point at the failures:
+**POINT at the failures before clicking:**
 
 > "That's the red phase. Those failures are *correct* — there's no implementation yet. This proves the tests are actually testing something, not just rubber-stamping code that already works."
+
+**ACTION:** Click **"Yes, implement now"**.
 
 ---
 
@@ -138,13 +141,9 @@ FAILED tests/test_api_insights.py::TestExportInsights::test_export_returns_count
 **SAY** (as implementation is written):
 > "Now the minimum code to make those tests pass. Schemas, repository methods, two new endpoints — one analytics aggregate, one CSV export."
 
-**LOOK FOR:** Test run output — the green moment:
+**WAIT** for Claude to hit PAUSE 3 — it shows the passing test output and asks: *"All tests green and coverage looks good. Ready to run Sonar analysis?"*
 
-```
-30 passed in X.XXs
-```
-
-**PAUSE.** Let it sit for a beat. Then:
+**PAUSE.** Point at the result before clicking. Then:
 
 **SAY:**
 > "Thirty tests. All green. Coverage above 80%."
@@ -154,6 +153,8 @@ FAILED tests/test_api_insights.py::TestExportInsights::test_export_returns_count
 *(beat)*
 
 > "Let's not."
+
+**ACTION:** Click **"Yes, run /analyze"**.
 
 ---
 
@@ -315,11 +316,12 @@ git checkout -- prototypes/python-fastapi/app/main.py
 
 | Beat | What's on screen | Duration |
 |------|-----------------|----------|
-| 1 · Problem | Whiteboard / table | 2 min |
-| 2 · Contract | `CLAUDE.md` + skill file | 2 min |
-| 3 · Task start | Task spec + terminal prompt | 1 min |
-| 4 · Red phase | Terminal — failing tests | ~2 min |
-| 5 · Green phase | Terminal — 30 passed | ~2 min |
+| 1 · Problem | Slide / whiteboard | 2 min |
+| 2 · Start task | Terminal — Claude reading files | 30 sec |
+| **⏸️ PAUSE 1** | AskUserQuestion prompt on screen | — |
+| 3 · Contract | Task spec + `CLAUDE.md` + skill file (while paused) | 3 min |
+| 4 · Red phase | Terminal — failing tests + PAUSE 2 prompt | ~2 min |
+| 5 · Green phase | Terminal — 30 passed + PAUSE 3 prompt | ~2 min |
 | 6 · Analysis | Terminal — 4 parallel A3S calls | ~2 min |
 | 7 · Finding | Terminal — issue + severity | 1 min |
 | 8 · Rule | Terminal — rule explanation | 1.5 min |
@@ -333,8 +335,9 @@ git checkout -- prototypes/python-fastapi/app/main.py
 ## Directing Notes
 
 **Pauses that must happen:**
-- After red phase output — let the failures sit on screen for 3 seconds before continuing
-- After "most developers would commit here" — full beat of silence before "let's not"
+- **PAUSE 1** (Claude waiting for confirmation) — use this time fully for the CLAUDE.md/skills explanation; don't rush to click "Yes"
+- **PAUSE 2** (after red phase) — let the failures sit on screen, read one aloud before clicking "Yes, implement now"
+- **PAUSE 3** (after green phase) — full beat of silence after "most developers would commit here" before clicking "Yes, run /analyze"
 - After the issue appears — read the message aloud, slowly, before explaining it
 - After `{"issues": []}` — let the clean result breathe
 

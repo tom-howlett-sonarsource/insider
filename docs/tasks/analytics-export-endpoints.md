@@ -37,6 +37,17 @@ Follow TDD strictly: tests first, minimum implementation to pass, then refactor.
 
 ---
 
+## ⏸️ PAUSE 1 — Before writing any code
+
+After reading the key files listed above, **stop and ask the user**:
+
+> "I've read the codebase and have a clear plan. Ready for me to start writing the schemas and tests?"
+
+Use `AskUserQuestion` with two options: **"Yes, start coding"** and **"Not yet — give me a moment"**.
+Do not proceed until the user confirms.
+
+---
+
 ## Part 1: `GET /api/v1/insights/analytics`
 
 ### Response shape
@@ -103,6 +114,19 @@ class TestAnalyticsInsights:
     async def test_analytics_requires_auth(self, client): ...
     # assert 401
 ```
+
+_(Write the Part 2 test class `TestExportInsights` now too — see Part 2 Step 2 below.)_
+
+## ⏸️ PAUSE 2 — After writing all failing tests
+
+Once both `TestAnalyticsInsights` and `TestExportInsights` are written, run pytest to confirm the tests fail (they should, since the endpoints don't exist yet). Show the failure output, then **stop and ask the user**:
+
+> "Tests written and failing as expected — that's the TDD red state. Ready to implement the endpoints and make them green?"
+
+Use `AskUserQuestion` with two options: **"Yes, implement now"** and **"Hold on"**.
+Do not write any implementation code until the user confirms.
+
+---
 
 ### Step 3 — Add repository method (`app/db_repository.py`)
 ```python
@@ -308,5 +332,16 @@ cd prototypes/python-fastapi
 .venv/bin/pytest tests/test_api_insights.py -v --cov=app --cov-report=term-missing
 ```
 All new tests must pass. Coverage on modified files must be >80%.
+
+## ⏸️ PAUSE 3 — After all tests pass
+
+Once the full test run shows all tests passing with coverage >80%, **stop and ask the user**:
+
+> "All tests green and coverage looks good. Ready to run Sonar analysis before committing?"
+
+Use `AskUserQuestion` with two options: **"Yes, run /analyze"** and **"Wait"**.
+Do not run `/analyze` or commit until the user confirms.
+
+---
 
 Run `/analyze` before committing, then `/pr` for the full PR lifecycle.
