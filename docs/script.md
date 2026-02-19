@@ -1,5 +1,4 @@
-# Demo Script: A3S Advanced Analysis via MCP
-### "Your agent wrote it. Did it write it right?"
+# Demo Script: The real title
 
 **Duration:** 20 min
 **Format:** Live terminal demo (Claude Code) + narration
@@ -32,27 +31,10 @@ Should show all passing (existing tests). Close that output before the audience 
 **SCREEN:** Blank terminal or switch to whiteboard/slide
 
 **SAY:**
-> "Most organisations want to use AI agents to ship faster. The fear is that speed comes at the cost of quality — that agents generate code that looks correct but isn't."
+> AI agents are now producing functional code incredibly fast. Our problem is how do we know that code is correct. And by correct I mean will it result in a reliable, maintainable and secure application. If we wait until the CI to do our quality checks we have to wait minutes before discovering problems and being able to fix them. This can really kill AI productivity gains. But what if the agent had access to a full Sonar analysis before the PR? What if that analysis took a second or two and includes everything you get in the CI?
 
-> "The obvious answer: run static analysis. But here's the problem."
+> Thats why we've been developing analysis for agents that is now available via MCP in beta. The problem of full analysis - fast is hard because deep analysis requires more than just the code thats been changed. To fully understand the meaning of the code it needs context, not just from the file thats been analysed but all the other files and their dependencies. So to achieve this our analysis for agents passes changed code back to SonarQube which analyses the change using the context that it learn't from the previous full analysis. This produces an analysis that's very close to the full CI one meaning its very unlikely that when the code is commited the quality gate doesn't pass allowing us to ship quickly and deliver more value!
 
-**SHOW:** Switch to browser, navigate to `a3s/knowledge-base/concepts.md`, or draw this table on a whiteboard:
-
-```
-┌─────────────────────────┬─────────────────────────────────────────────────┐
-│ Basic linter            │ No project context — misses 36% of issues,      │
-│ (single-file analysis)  │ 75% of security vulnerabilities                 │
-├─────────────────────────┼─────────────────────────────────────────────────┤
-│ Full CI analysis        │ Takes minutes — too slow for an agent loop       │
-└─────────────────────────┴─────────────────────────────────────────────────┘
-```
-
-**SAY:**
-> "A linter that doesn't understand your project misses the issues that matter most. A full CI scan is too slow — agents can't wait minutes between iterations."
-
-> "A3S solves this with a two-phase approach: collect context during CI, restore it on-demand. Same analysis precision as a full scan, in seconds."
-
-**LOOK FOR:** Audience nodding or leaning in. This is the hook.
 
 ---
 
@@ -61,7 +43,9 @@ Should show all passing (existing tests). Close that output before the audience 
 **SCREEN:** Terminal
 
 **SAY:**
-> "Before I start the task — let me show you the SonarQube MCP is live. This isn't a mock. It's connected to a real SonarQube Cloud project right now."
+> "I'm going to show how this works in claude and we're (well claude!) is going to do some work for us on an internal application that tracks the insights our product managers receive from customers. Today we're going to code in python but this service will work for all the langauges that sonar supports. 
+
+> Before we start let me show you the SonarQube tools that are available to Claude through MCP. I'll point out that MCP isn't the only way to access this service. It's available through an API and we'll soon have a CLI that I'm really excited about. But for now the MCP 
 
 **ACTION:** Type in the terminal:
 
