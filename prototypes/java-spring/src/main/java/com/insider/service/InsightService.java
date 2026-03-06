@@ -2,17 +2,28 @@ package com.insider.service;
 
 import com.insider.dto.request.InsightCreateRequest;
 import com.insider.dto.request.InsightUpdateRequest;
+import com.insider.dto.response.AnalyticsResponse;
+import com.insider.dto.response.ExportResponse;
 import com.insider.dto.response.InsightListResponse;
 import com.insider.dto.response.InsightResponse;
+import com.insider.dto.response.WeeklyCount;
 import com.insider.entity.Insight;
 import com.insider.exception.ForbiddenException;
 import com.insider.exception.ResourceNotFoundException;
 import com.insider.repository.InsightRepository;
 import com.insider.security.UserPrincipal;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +36,15 @@ public class InsightService {
 
     private static final String INSIGHT_NOT_FOUND = "Insight not found";
     private static final String NOT_AUTHORIZED = "Not authorized to modify this insight";
+    private static final DateTimeFormatter WEEK_FORMATTER =
+            DateTimeFormatter.ofPattern("YYYY-ww", Locale.ROOT);
 
     private final InsightRepository insightRepository;
+    private final WebhookClient webhookClient;
 
-    public InsightService(InsightRepository insightRepository) {
+    public InsightService(InsightRepository insightRepository, WebhookClient webhookClient) {
         this.insightRepository = insightRepository;
+        this.webhookClient = webhookClient;
     }
 
     /**
@@ -125,5 +140,47 @@ public class InsightService {
         }
 
         insightRepository.delete(insight);
+    }
+
+    /**
+     * Return aggregated analytics statistics for all insights.
+     */
+    @Transactional(readOnly = true)
+    public AnalyticsResponse getAnalytics() {
+        List<Insight> all = insightRepository.findAll();
+
+        Map<String, Integer> bySource = new LinkedHashMap<>();
+        Map<String, Integer> byAuthor = new LinkedHashMap<>();
+        for (Insight insight : all) {
+            String sourceKey = insight.getSource() != null
+                    ? insight.getSource().getValue() : "unspecified";
+            bySource.merge(sourceKey, 1, Integer::sum);
+            byAuthor.merge(insight.getAuthorId().toString(), 1, Integer::sum);
+        }
+
+        LocalDateTime cutoff = LocalDateTime.now(ZoneOffset.UTC).minusWeeks(8);
+        Map<String, Integer> weeklyMap = new TreeMap<>();
+        for (Insight insight : all) {
+            if (insight.getCreatedAt() != null && insight.getCreatedAt().isAfter(cutoff)) {
+                String week = insight.getCreatedAt().format(WEEK_FORMATTER);
+                weeklyMap.merge(week, 1, Integer::sum);
+            }
+        }
+
+        List<WeeklyCount> weekly = weeklyMap.entrySet().stream()
+                .map(e -> new WeeklyCount(e.getKey(), e.getValue()))
+                .toList();
+
+        return new AnalyticsResponse(all.size(), bySource, byAuthor, weekly);
+    }
+
+    /**
+     * Export all insights to CSV format and notify the analytics webhook.
+     */
+    public ExportResponse exportInsights() {
+        List<Insight> insights = insightRepository.findAll(
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        boolean notified = webhookClient.notifyExport(insights.size());
+        return new ExportResponse(insights.size(), notified);
     }
 }

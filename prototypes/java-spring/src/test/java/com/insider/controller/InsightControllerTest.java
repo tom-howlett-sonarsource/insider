@@ -28,7 +28,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.transaction.annotation.Transactional;
+
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.insider.service.WebhookClient;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -51,6 +58,8 @@ class InsightControllerTest {
     @Autowired private PasswordEncoder passwordEncoder;
 
     @Autowired private JwtProvider jwtProvider;
+
+    @MockBean private WebhookClient webhookClient;
 
     private User testUser;
     private User otherUser;
@@ -300,6 +309,134 @@ class InsightControllerTest {
                             delete(INSIGHTS_ENDPOINT + "/" + insight.getId())
                                     .header("Authorization", "Bearer " + otherAuthToken))
                     .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    class AnalyticsInsights {
+
+        private static final String ANALYTICS_ENDPOINT = "/api/v1/insights/analytics";
+
+        @Test
+        void analytics_EmptyDatabase_ReturnsZeroStats() throws Exception {
+            mockMvc.perform(
+                            get(ANALYTICS_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(0))
+                    .andExpect(jsonPath("$.by_source").isEmpty())
+                    .andExpect(jsonPath("$.by_author").isEmpty())
+                    .andExpect(jsonPath("$.weekly").isEmpty());
+        }
+
+        @Test
+        void analytics_TotalCount_ReflectsCreatedInsights() throws Exception {
+            insightRepository.save(new Insight(testUser.getId(), "First", "First desc", null));
+            insightRepository.save(new Insight(testUser.getId(), "Second", "Second desc", null));
+
+            mockMvc.perform(
+                            get(ANALYTICS_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(2));
+        }
+
+        @Test
+        void analytics_BySource_GroupsInsightsBySource() throws Exception {
+            insightRepository.save(
+                    new Insight(testUser.getId(), "Conf insight", "From conf", Source.CONFERENCE));
+
+            mockMvc.perform(
+                            get(ANALYTICS_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.by_source.conference").value(1));
+        }
+
+        @Test
+        void analytics_ByAuthor_GroupsInsightsByAuthor() throws Exception {
+            insightRepository.save(new Insight(testUser.getId(), "My insight", "By me", null));
+
+            mockMvc.perform(
+                            get(ANALYTICS_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.by_author").isNotEmpty());
+        }
+
+        @Test
+        void analytics_Weekly_ContainsCurrentWeek() throws Exception {
+            insightRepository.save(new Insight(testUser.getId(), "Weekly", "This week", null));
+
+            mockMvc.perform(
+                            get(ANALYTICS_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.weekly").isArray())
+                    .andExpect(jsonPath("$.weekly[0].count").value(1));
+        }
+
+        @Test
+        void analytics_WithoutAuth_Returns401() throws Exception {
+            mockMvc.perform(get(ANALYTICS_ENDPOINT)).andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Nested
+    class ExportInsights {
+
+        private static final String EXPORT_ENDPOINT = "/api/v1/insights/export";
+
+        @BeforeEach
+        void setUpWebhook() {
+            when(webhookClient.notifyExport(anyInt())).thenReturn(true);
+        }
+
+        @Test
+        void export_ReturnsExportedCount() throws Exception {
+            insightRepository.save(new Insight(testUser.getId(), "Export 1", "First export", null));
+            insightRepository.save(new Insight(testUser.getId(), "Export 2", "Second export", null));
+
+            mockMvc.perform(
+                            post(EXPORT_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.exported").value(2));
+        }
+
+        @Test
+        void export_WebhookNotifiedTrue() throws Exception {
+            mockMvc.perform(
+                            post(EXPORT_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.webhook_notified").value(true));
+        }
+
+        @Test
+        void export_CallsWebhookWithCount() throws Exception {
+            insightRepository.save(new Insight(testUser.getId(), "Test", "Test desc", null));
+
+            mockMvc.perform(
+                            post(EXPORT_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk());
+
+            verify(webhookClient).notifyExport(1);
+        }
+
+        @Test
+        void export_EmptyDatabase_ReturnsZero() throws Exception {
+            mockMvc.perform(
+                            post(EXPORT_ENDPOINT)
+                                    .header("Authorization", "Bearer " + authToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.exported").value(0));
+        }
+
+        @Test
+        void export_WithoutAuth_Returns401() throws Exception {
+            mockMvc.perform(post(EXPORT_ENDPOINT)).andExpect(status().isUnauthorized());
         }
     }
 }

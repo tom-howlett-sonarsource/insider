@@ -2,7 +2,7 @@
 name: pr
 description: Create a PR, monitor CI checks, and merge when green. Use after committing to a feature branch to handle the full PR lifecycle.
 argument-hint: [title (optional)]
-allowed-tools: Bash(gh *), Bash(git push *), Bash(git branch *), Bash(git log *), Bash(git diff *), Bash(git status *)
+allowed-tools: Bash(gh *), Bash(git push *), Bash(git branch *)
 ---
 
 # PR Workflow
