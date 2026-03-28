@@ -2,6 +2,8 @@ package com.insider.controller;
 
 import com.insider.dto.request.InsightCreateRequest;
 import com.insider.dto.request.InsightUpdateRequest;
+import com.insider.dto.response.AnalyticsResponse;
+import com.insider.dto.response.ExportResponse;
 import com.insider.dto.response.InsightListResponse;
 import com.insider.dto.response.InsightResponse;
 import com.insider.security.UserPrincipal;
@@ -57,6 +59,26 @@ public class InsightController {
 
         InsightResponse response = insightService.createInsight(request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Get analytics statistics about insights.
+     */
+    @GetMapping("/analytics")
+    public ResponseEntity<AnalyticsResponse> getAnalytics(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        return ResponseEntity.ok(insightService.getAnalytics());
+    }
+
+    /**
+     * Export all insights to CSV and notify the analytics webhook.
+     */
+    @PostMapping("/export")
+    public ResponseEntity<ExportResponse> exportInsights(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        return ResponseEntity.ok(insightService.exportInsights());
     }
 
     /**
