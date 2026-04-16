@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 import uuid
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
@@ -54,17 +55,17 @@ app.include_router(auth.router)
 app.include_router(users.router)
 
 
-def get_repository(db: Session = Depends(get_db)) -> InsightDBRepository:
+def get_repository(db: Annotated[Session, Depends(get_db)]) -> InsightDBRepository:
     """Dependency that provides an insight repository."""
     return InsightDBRepository(db)
 
 
 @app.get("/api/v1/insights", response_model=InsightListResponse)
 async def list_insights(
+    current_user: Annotated[User, Depends(get_current_user)],
+    repository: Annotated[InsightDBRepository, Depends(get_repository)],
     limit: int = 20,
     offset: int = 0,
-    current_user: User = Depends(get_current_user),
-    repository: InsightDBRepository = Depends(get_repository),
 ):
     """List all insights."""
     insights, total = repository.get_all(limit=limit, offset=offset)
@@ -83,8 +84,8 @@ async def list_insights(
 )
 async def create_insight(
     insight_data: InsightCreate,
-    current_user: User = Depends(get_current_user),
-    repository: InsightDBRepository = Depends(get_repository),
+    current_user: Annotated[User, Depends(get_current_user)],
+    repository: Annotated[InsightDBRepository, Depends(get_repository)],
 ):
     """Create a new insight."""
     insight = Insight(
@@ -105,8 +106,8 @@ async def create_insight(
 @app.get("/api/v1/insights/{insight_id}", response_model=InsightResponse)
 async def get_insight(
     insight_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    repository: InsightDBRepository = Depends(get_repository),
+    current_user: Annotated[User, Depends(get_current_user)],
+    repository: Annotated[InsightDBRepository, Depends(get_repository)],
 ):
     """Get an insight by ID."""
     insight = repository.get_by_id(insight_id)
@@ -122,8 +123,8 @@ async def get_insight(
 async def update_insight(
     insight_id: uuid.UUID,
     insight_data: InsightUpdate,
-    current_user: User = Depends(get_current_user),
-    repository: InsightDBRepository = Depends(get_repository),
+    current_user: Annotated[User, Depends(get_current_user)],
+    repository: Annotated[InsightDBRepository, Depends(get_repository)],
 ):
     """Update an insight."""
     insight = repository.get_by_id(insight_id)
@@ -162,8 +163,8 @@ async def update_insight(
 )
 async def delete_insight(
     insight_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    repository: InsightDBRepository = Depends(get_repository),
+    current_user: Annotated[User, Depends(get_current_user)],
+    repository: Annotated[InsightDBRepository, Depends(get_repository)],
 ):
     """Delete an insight."""
     insight = repository.get_by_id(insight_id)
