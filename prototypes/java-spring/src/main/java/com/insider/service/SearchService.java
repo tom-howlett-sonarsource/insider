@@ -9,14 +9,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SearchService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SearchService.class);
 
     private static final String DB_URL = "jdbc:h2:mem:testdb";
 
@@ -27,15 +30,10 @@ public class SearchService {
     }
 
     // S112: method declares throwing generic Exception
-    public List<Insight> searchInsights(String query) throws Exception {
-        System.out.println("Searching: " + query); // S106
+    public List<Insight> searchInsights(String query) {
+        logger.info("Searching: {}", query);
 
-        // S1481: unused local variable
-        int unusedCount = 0;
-
-        // S1854: dead assignment — overwritten before use
-        List<Insight> results = new ArrayList<>();
-        results = insightRepository.findAll();
+        List<Insight> results = insightRepository.findAll();
 
         return results.stream()
                 .filter(i -> i.getTitle() != null
@@ -44,7 +42,7 @@ public class SearchService {
     }
 
     // S1172: parameter 'format' is declared but never used
-    public String formatResult(Insight insight, String format) {
+    public String formatResult(Insight insight) {
         return insight.getTitle();
     }
 
@@ -61,16 +59,16 @@ public class SearchService {
 
     // S2095: resource leak — InputStream not in try-with-resources
     public int countLinesInFile(String path) throws IOException {
-        InputStream is = new FileInputStream(path);
-        int lines = 0;
-        int c;
-        while ((c = is.read()) != -1) {
-            if (c == '\n') {
-                lines++;
+        try (InputStream is = new FileInputStream(path)) {
+            int lines = 0;
+            int c;
+            while ((c = is.read()) != -1) {
+                if (c == '\n') {
+                    lines++;
+                }
             }
+            return lines;
         }
-        is.close(); // S2095: not called if exception is thrown above
-        return lines;
     }
 
     // S3518: possible division by zero when scores is empty
@@ -79,7 +77,7 @@ public class SearchService {
         for (int score : scores) {
             total += score;
         }
-        return total / scores.size();
+        return (double) total / scores.size();
     }
 
     // S2142: InterruptedException swallowed without restoring interrupt status
@@ -87,14 +85,15 @@ public class SearchService {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            System.out.println("Search interrupted"); // S106: and S2142
+            logger.warn("Search interrupted", e);
+            Thread.currentThread().interrupt();
         }
     }
 
     // S1135: TODO comments flagged by Sonar
     // TODO: implement caching for search results
     // TODO: add pagination support
-    public List<Insight> cachedSearch(String query) throws Exception {
+    public List<Insight> cachedSearch(String query) {
         return searchInsights(query);
     }
 
@@ -109,13 +108,12 @@ public class SearchService {
     }
 
     // S2077: SQL injection — user input concatenated directly into query
-    public void rawSearch(String query) throws Exception {
-        Connection conn = DriverManager.getConnection(DB_URL, "sa", "");
-        Statement stmt = conn.createStatement();
-        ResultSet rs = stmt.executeQuery(
-                "SELECT * FROM insights WHERE title LIKE '%" + query + "%'");
-        rs.close();
-        stmt.close();
-        conn.close();
+    public void rawSearch(String query) throws SQLException {
+        String dbPassword = System.getenv("DB_PASSWORD");
+        try (Connection conn = DriverManager.getConnection(DB_URL, "sa", dbPassword);
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(
+                    "SELECT * FROM insights WHERE title LIKE '%" + query + "%'");
+        }
     }
 }
