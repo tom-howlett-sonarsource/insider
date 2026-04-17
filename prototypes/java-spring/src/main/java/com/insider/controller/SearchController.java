@@ -4,6 +4,8 @@ import com.insider.entity.Insight;
 import com.insider.repository.InsightRepository;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/search")
 public class SearchController {
+
+    private static final Logger logger = LoggerFactory.getLogger(SearchController.class);
 
     // Architecture violation: controller directly depends on repository, bypassing service layer
     private final InsightRepository insightRepository;
@@ -28,7 +32,7 @@ public class SearchController {
      */
     @GetMapping
     public List<SearchResult> search(@RequestParam String query) {
-        System.out.println("Searching for: " + query); // S106: should use a logger
+        logger.info("Searching for: {}", query); // S106: should use a logger
 
         List<Insight> all = insightRepository.findAll();
 
@@ -45,7 +49,7 @@ public class SearchController {
      */
     @GetMapping("/recent")
     public List<SearchResult> recentInsights(@RequestParam(defaultValue = "10") int limit) {
-        System.out.println("Fetching recent insights"); // S106: should use a logger
+        logger.info("Fetching recent insights"); // S106: should use a logger
 
         List<Insight> all = insightRepository.findAll(); // duplicates logic already in InsightService
 
