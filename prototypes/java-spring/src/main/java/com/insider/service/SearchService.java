@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class SearchService {
 
-    // S2068: Hard-coded credential
-    private static final String DB_PASSWORD = "admin123";
     private static final String DB_URL = "jdbc:h2:mem:testdb";
 
     private final InsightRepository insightRepository;
@@ -112,7 +110,7 @@ public class SearchService {
 
     // S2077: SQL injection — user input concatenated directly into query
     public void rawSearch(String query) throws Exception {
-        Connection conn = DriverManager.getConnection(DB_URL, "sa", DB_PASSWORD);
+        Connection conn = DriverManager.getConnection(DB_URL, "sa", "");
         Statement stmt = conn.createStatement();
         ResultSet rs = stmt.executeQuery(
                 "SELECT * FROM insights WHERE title LIKE '%" + query + "%'");
