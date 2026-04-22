@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 import uuid
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
@@ -63,7 +64,7 @@ def get_repository(db: Session = Depends(get_db)) -> InsightDBRepository:
 async def list_insights(
     limit: int = 20,
     offset: int = 0,
-    current_user: User = Depends(get_current_user),
+    current_user: Annotated[User, Depends(get_current_user)],
     repository: InsightDBRepository = Depends(get_repository),
 ):
     """List all insights."""
