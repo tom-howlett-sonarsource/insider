@@ -1,7 +1,11 @@
 """FastAPI application entry point."""
+import csv
+import tempfile
 import uuid
 from contextlib import asynccontextmanager
 
+import aiofiles
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -14,10 +18,13 @@ from app.models import Insight, User
 from app.routers import auth, users
 from app.seed import seed_users
 from app.schemas import (
+    AnalyticsResponse,
+    ExportResponse,
     InsightCreate,
     InsightListResponse,
     InsightResponse,
     InsightUpdate,
+    WeeklyInsightCount,
 )
 
 logger = get_logger("app.main")
@@ -25,6 +32,8 @@ logger = get_logger("app.main")
 # Error message constants
 INSIGHT_NOT_FOUND = "Insight not found"
 NOT_AUTHORIZED = "Not authorized to modify this insight"
+EXPORT_SUCCESS = "Insights exported successfully"
+ANALYTICS_WEBHOOK_URL = "https://hooks.example.com/notify"
 
 
 @asynccontextmanager
@@ -100,6 +109,94 @@ async def create_insight(
         current_user.id,
     )
     return InsightResponse(**created.model_dump())
+
+
+@app.get("/api/v1/insights/analytics", response_model=AnalyticsResponse)
+def get_analytics(
+    current_user: User = Depends(get_current_user),
+    repository: InsightDBRepository = Depends(get_repository),
+):
+    """Get analytics about insights."""
+    analytics = repository.get_analytics()
+
+    return AnalyticsResponse(
+        total_count=analytics["total_count"],
+        count_by_source=analytics["count_by_source"],
+        count_by_author=analytics["count_by_author"],
+        insights_per_week=[
+            WeeklyInsightCount(
+                week_start=week["week_start"], count=week["count"]
+            )
+            for week in analytics["insights_per_week"]
+        ],
+    )
+
+
+@app.post("/api/v1/insights/export", response_model=ExportResponse)
+async def export_insights(
+    current_user: User = Depends(get_current_user),
+    repository: InsightDBRepository = Depends(get_repository),
+):
+    """Export all insights to CSV and send notification."""
+    insights = repository.get_all_for_export()
+
+    # Create CSV in temporary file using async file operations
+    temp_file = tempfile.NamedTemporaryFile(
+        mode="w", delete=False, suffix=".csv"
+    )
+    temp_file_path = temp_file.name
+    temp_file.close()
+
+    async with aiofiles.open(temp_file_path, mode="w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        await csvfile.write(
+            ",".join(
+                ["id", "title", "description", "source", "author_id", "created_at"]
+            )
+            + "\n"
+        )
+
+        for insight in insights:
+            row = [
+                str(insight.id),
+                insight.title,
+                insight.description,
+                insight.source.value if insight.source else "",
+                str(insight.author_id),
+                insight.created_at.isoformat(),
+            ]
+            await csvfile.write(",".join(f'"{field}"' for field in row) + "\n")
+
+    # Send webhook notification
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                ANALYTICS_WEBHOOK_URL,
+                json={
+                    "event": "insights_exported",
+                    "count": len(insights),
+                    "user_id": str(current_user.id),
+                },
+                timeout=5.0,
+            )
+        logger.info(
+            "Export notification sent: count=%d user_id=%s",
+            len(insights),
+            current_user.id,
+        )
+    except Exception as e:
+        logger.warning("Failed to send export notification: %s", str(e))
+
+    logger.info(
+        "Insights exported: count=%d user_id=%s",
+        len(insights),
+        current_user.id,
+    )
+
+    return ExportResponse(
+        message=EXPORT_SUCCESS,
+        exported_count=len(insights),
+    )
 
 
 @app.get("/api/v1/insights/{insight_id}", response_model=InsightResponse)

@@ -66,3 +66,26 @@ class InsightListResponse(BaseModel):
     total: int
     limit: int = 20
     offset: int = 0
+
+
+class WeeklyInsightCount(BaseModel):
+    """Schema for weekly insight count."""
+
+    week_start: datetime
+    count: int
+
+
+class AnalyticsResponse(BaseModel):
+    """Schema for analytics response."""
+
+    total_count: int
+    count_by_source: dict[str, int]
+    count_by_author: dict[str, int]
+    insights_per_week: list[WeeklyInsightCount]
+
+
+class ExportResponse(BaseModel):
+    """Schema for export response."""
+
+    message: str
+    exported_count: int

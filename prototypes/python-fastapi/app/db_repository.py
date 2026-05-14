@@ -1,8 +1,9 @@
 """Database repository for insights."""
 import uuid
-from datetime import datetime, timezone
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.db_models import InsightDB
@@ -95,3 +96,70 @@ class InsightDBRepository:
         self._session.delete(db_insight)
         self._session.commit()
         return True
+
+    def get_analytics(self) -> dict:
+        """Get analytics data about insights."""
+        logger.debug("get_analytics")
+
+        # Total count
+        total_count = self._session.query(InsightDB).count()
+
+        # Count by source
+        source_counts = (
+            self._session.query(InsightDB.source, func.count(InsightDB.id))
+            .filter(InsightDB.source.isnot(None))
+            .group_by(InsightDB.source)
+            .all()
+        )
+        count_by_source = dict(source_counts)
+
+        # Count by author
+        author_counts = (
+            self._session.query(
+                InsightDB.author_id, func.count(InsightDB.id)
+            )
+            .group_by(InsightDB.author_id)
+            .all()
+        )
+        count_by_author = dict(author_counts)
+
+        # Insights per week for last 8 weeks
+        now = datetime.now(timezone.utc)
+        insights_per_week = []
+
+        for week_offset in range(8):
+            week_start = now - timedelta(weeks=week_offset + 1)
+            week_end = now - timedelta(weeks=week_offset)
+
+            count = (
+                self._session.query(InsightDB)
+                .filter(
+                    InsightDB.created_at >= week_start,
+                    InsightDB.created_at < week_end,
+                )
+                .count()
+            )
+
+            insights_per_week.append(
+                {"week_start": week_start, "count": count}
+            )
+
+        # Reverse to show oldest week first
+        insights_per_week.reverse()
+
+        return {
+            "total_count": total_count,
+            "count_by_source": count_by_source,
+            "count_by_author": count_by_author,
+            "insights_per_week": insights_per_week,
+        }
+
+    def get_all_for_export(self) -> list[Insight]:
+        """Get all insights for export (no pagination)."""
+        logger.debug("get_all_for_export")
+        db_insights = (
+            self._session.query(InsightDB)
+            .order_by(desc(InsightDB.created_at))
+            .all()
+        )
+        return [i.to_domain() for i in db_insights]
